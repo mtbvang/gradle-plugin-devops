@@ -1,0 +1,7 @@
+---
+- src: https://github.com/mtbvang/ansible-role-devtools
+  name: devtools
+  version: v0.1.1
+- src: https://github.com/mtbvang/ansible-role-openshift.git
+  name: openshift
+  version: v1.0.0

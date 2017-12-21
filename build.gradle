@@ -3,51 +3,55 @@ version = "${artifact_version}.${build_number}"
 
 apply plugin: 'groovy'
 apply plugin: 'maven'
+apply plugin: 'java-gradle-plugin'
+apply from: "$rootDir/gradle/integration-test.gradle"
+apply from: "$rootDir/gradle/functional-test.gradle"
 
-repositories {
-	mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
-    compile gradleApi()
-    compile localGroovy()
-    testCompile gradleTestKit()
-}
+	compile 'org.codehaus.groovy:groovy-all:2.4.12'
+	compile 'org.yaml:snakeyaml:1.17'
+	compile 'com.hubspot.jinjava:jinjava:2.2.8'
+	compile group: 'org.slf4j', name:'slf4j-api', version:'1.7.25'
+	compile group: 'ch.qos.logback', name:'logback-classic', version:'1.2.3'
+	compile group: 'ch.qos.logback', name:'logback-core', version:'1.2.3'
+	compile group: 'org.apache.commons', name:'commons-lang3', version:'3.6'
+	compile 'org.awaitility:awaitility:3.0.0'
+	compile group: 'org.springframework', name: 'spring-core', version: '5.0.1.RELEASE'
+	compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
 
-task wrapper(type: Wrapper) {
-    gradleVersion = "2.10"
+	testCompile gradleTestKit()
+	testCompile 'junit:junit:4.12'
+	testCompile 'org.assertj:assertj-core:3.8.0'
+	testCompile group: 'org.slf4j', name:'slf4j-api', version:'1.7.25'
+	testCompile group: 'ch.qos.logback', name:'logback-classic', version:'1.2.3'
+	testCompile group: 'ch.qos.logback', name:'logback-core', version:'1.2.3'
+	testCompile group: 'org.apache.commons', name:'commons-lang3', version:'3.6'
+	testCompile 'org.awaitility:awaitility:3.0.0'
+	testCompile group: 'org.apache.commons', name: 'commons-collections4', version: '4.0'
 }
 
 test {
-    // Always run the tests
-    outputs.upToDateWhen { false }
+	testLogging {
+		// Make sure output from
+		// standard out or error is shown
+		// in Gradle output.
+		showStandardStreams = true
 
-    // Turn on some console logging
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-        stackTraceFilters "entryPoint"
-    }
+		// Or we use events method:
+		// events 'standard_out', 'standard_error'
+
+		// Or set property events:
+		// events = ['standard_out', 'standard_error']
+
+		// Instead of string values we can
+		// use enum values:
+		// events org.gradle.api.tasks.testing.logging.TestLogEvent.STANDARD_OUT,
+		//        org.gradle.api.tasks.testing.logging.TestLogEvent.STANDARD_ERROR,
+	}
 }
 
-// Write the plugin's classpath to a file to share with the tests
-task createClasspathManifest {
-    def outputDir = file("$buildDir/$name")
-
-    inputs.files sourceSets.main.runtimeClasspath
-    outputs.dir outputDir
-
-    doLast {
-        outputDir.mkdirs()
-        file("$outputDir/plugin-classpath.txt").text = sourceSets.main.runtimeClasspath.join("\n")
-    }
-}
-
-// Add the classpath file to the test runtime classpath
-dependencies {
-    testRuntime files(createClasspathManifest)
-}
-
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
-
+test.enabled = project.hasProperty('testEnabled').toBoolean() ? project.property('testEnabled').toBoolean() : false
+functionalTest.enabled = project.hasProperty('functionalTestEnabled').toBoolean() ? project.property('functionalTestEnabled').toBoolean() : false
+integrationTest.enabled = project.hasProperty('integrationTestEnabled').toBoolean() ? project.property('integrationTestEnabled').toBoolean() : false

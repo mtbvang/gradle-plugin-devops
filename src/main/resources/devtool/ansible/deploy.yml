@@ -1,0 +1,344 @@
+---
+- name: Install FPP services in OpenShift
+  hosts: localhost
+  vars_files:
+    - vars.yml
+    - projects.yml
+
+  tasks:       
+    - debug:
+        var: workDir
+      tags: debug
+    - debug:
+        var: projectDir
+      tags: debug
+    - debug:
+        var: projects
+      tags: debug
+      
+    - name: Verify if variables are set
+      fail:
+        msg: "Target directory is not defined. Please edit vars.yml"
+      when: workDir is undefined
+
+    - name: Login in OpenShift as administrator
+      shell: "oc login --insecure-skip-tls-verify=true -u {{ openshiftAdminUser }} -p {{ openshiftAdminPassword }} {{ openshiftAuthority }}"
+      tags:
+        - openshift
+        - admin
+
+    - name: Adjust SCC
+      shell: "oc patch scc restricted -p '{\"runAsUser\":{\"type\":\"RunAsAny\"},\"fsGroup\":{\"type\":\"RunAsAny\"}}'"
+      when: adjustScc
+
+    - name: Create Workdir
+      file:
+        path: "{{ workDir }}"
+        state: directory
+
+    - name: Clone projects
+      git:
+        repo: "{{ item.repo }}"
+        dest: "{{ workDir }}/{{ item.name }}"
+        update: yes
+        ssh_opts: "-o StrictHostKeyChecking=no"
+        version: "{{ item.repoVersion }}" #FP-13973 Working around below with seperate checkout -f task.
+        force: yes
+      with_items: "{{ projects }}"
+      when:   
+        - cloneAppsCode | bool
+        - item.enabled | bool
+      become_user: vagrant
+      tags:
+        - git
+        - gitcheckout
+
+    - name: Compile Java Projects
+      shell: "mvn -f {{ workDir }}/{{ item.name }}/pom.xml clean package -Dmaven.test.skip=true"
+      with_items: "{{ projects }}"
+      when:
+        - item.project == projectTypeSpringboot
+        - item.enabled | bool
+        - buildProjects | bool
+      tags:
+        - compile
+        - compilejava
+
+#   This task cannot be run from a windows machine due to the symlinks linux will create when running yarn. The proposed solution is to use npm install --no-bin-links however
+#   while this will work on windows it will fail on linux due to exceeding the maximum call stack size. For now the best we can do is to stick with yarn as this is probably
+#   the more popular use case.
+#   todo: look for a better over all solution that will work for both OS
+    - name: NPM install NodeJS Projects
+      shell: >
+        npm set strict-ssl false
+        && cd {{ workDir }}/{{ item.name }}
+        && yarn
+      with_items: "{{ projects }}"
+      when: 
+        - item.project == projectTypeWeb
+        - item.enabled | bool
+        - buildProjects | bool
+      tags:
+        - installnodejs
+        
+#    todo: need to split these commands apart as the task does not fail if one of the step fails. e.g. if node ./node_modules/.bin/gulp build fails, we will still execute npm run build:springboot
+    - name: Build NodeJS Projects
+      #shell: "cd  {{ workDir }}/{{ item.name }} && gulp build && npm run build:springboot"
+      shell: "cd  {{ workDir }}/{{ item.name }} &&  node --max-old-space-size=4096 ./node_modules/.bin/gulp build && npm run build:springboot"
+      with_items: "{{ projects }}"
+      when: 
+        - item.enabled | bool
+        - item.project == projectTypeWeb
+        - buildProjects | bool
+      tags: build,compile,buildnodejs,compilenodejs  
+        
+    - name: Login in OpenShift as {{ openshiftDevUser }}
+      shell: "oc login --insecure-skip-tls-verify=true -u {{ openshiftDevUser }} -p {{ openshiftDevPassword }} {{ openshiftAuthority }}"
+      tags:
+        - openshift
+        - build
+
+    - name: Create a new OpenShift project
+      shell: "oc new-project {{ projectName }}"
+      register: command_result
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - openshift
+
+    - name: Define OpenShift project
+      shell: "oc project {{ projectName }}"
+      tags:
+        - openshift
+
+    - name: Create OpenShift new-build
+      shell: "oc new-build --binary --name={{ item.name }} -l app={{ item.name }}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when: item.enabled | bool
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - build
+        - openshift
+        
+    - name: Set springboot image build config environment variable
+      shell: "oc set env bc/{{ item.name }} SERVER_PORT='{{ item.port }}' MANAGE_PORT='{{ item.managePort }}' JMX_PORT='{{ item.jmxPort }}' JREBEL_PORT='{{ item.jrebelPort }}' REMOTE_DEBUG_PORT='{{ item.remoteDebuggingPort }}' JAVA_OPTIONS='{{ item.javaOptions }}' JAVA_APP_JAR='{{ item.artifact }}' JAVA_APP_ARGS='{{ item.appArgs }}' AB_ENABLED='{{ item.abEnabled }}'"
+      with_items: "{{ projects }}"
+      when: 
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      tags:
+        - buildjava  
+        - deploy
+     
+    - name: Install Dockerfile into individual projects checkedout from source code for docker image build and deployment.
+      copy:
+        src: "{{ projectDir }}/provision/Dockerfile_springbootJrebel"
+        dest: "{{ workDir }}/{{ item.name }}/{{ item.buildPath }}/Dockerfile"
+        backup: no
+      with_items: "{{ projects }}"
+      when:   
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      tags:
+        - installdockerfile
+        - compile
+        - compilejava
+        - compilenodejs
+        - deploy
+
+    - name: Install JRebel jar into projects for docker image build and deployment.
+      copy:
+        src: "{{ projectDir }}/provision/jrebel.jar"
+        dest: "{{ workDir }}/{{ item.name }}/{{ item.buildPath }}/jrebel.jar"
+        backup: no
+      with_items: "{{ projects }}"
+      when:   
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      tags:
+        - jrebel
+        - compile
+        - compilejava
+    
+    - name: Install JRebel .so into projects for docker image build and deployment.
+      copy:
+        src: "{{ projectDir }}/provision/libjrebel64.so"
+        dest: "{{ workDir }}/{{ item.name }}/{{ item.buildPath }}/libjrebel64.so"
+        backup: no
+      with_items: "{{ projects }}"
+      when:   
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      tags:
+        - jrebel
+        - compile
+        - compilejava
+
+    - name: Build and Deploy code images from the sources
+      shell: "oc start-build {{ item.name }} --from-dir={{ workDir }}/{{ item.name }}/{{ item.buildPath }} --follow"
+      with_items: "{{ projects }}"
+      when: 
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      tags:
+        - build
+        - deploy
+
+    - name: Create OpenShift applications from previously created images
+      shell: "oc new-app {{ item.name }} -l app={{ item.name }}{{ (item.hystrix == True) | ternary(',hystrix.enabled=true','') }}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when: 
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - deploy
+
+    - name: Expose OpenShift applications
+      shell: "oc expose service {{ item.name }} --hostname={{ item.name }}.{{ projectName }}.{{ openshiftEnvironment }}.{{ openshiftDomain }} --path={{ item.endpoint | default('') }} --port={{ item.port }}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - openshift
+        - exposeservice
+    
+    - name: Expose OpenShift applications (Management)
+      shell: "oc expose service {{ item.name }} --hostname={{ item.name }}.{{ projectName }}.{{ openshiftEnvironment }}.{{ openshiftDomain }} --path=/manage --port={{ item.managePort }} --name={{ item.name }}-manage"
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project != projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - openshift
+        - exposeservice
+
+    - name: Add exposed openshift application route to hosts file.
+      shell: "/usr/local/sbin/hostess add {{ item.name }}.{{ openshiftDomain }} {{openshiftHostname}}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when: 
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+        - openshiftHostname == '127.0.0.1'
+      become: yes
+      tags:
+        - hostsfile
+
+    - name: Set security context contraint for restricted
+      shell: >
+        oc login -u {{ openshiftAdminUser }} -p {{ openshiftAdminPassword }} {{ openshiftAuthority }} &&
+        oc project {{ projectName }} &&
+        oc delete -f {{ projectDir }}/ansible/scc-restricted.yml &&
+        oc create -f {{ projectDir }}/ansible/scc-restricted.yml &&
+        oc adm policy add-scc-to-user anyuid -z {{ projectName }}
+      tags:
+        - scc
+
+    - name: Login in OpenShift as {{ openshiftDevUser }}
+      shell: "oc login --insecure-skip-tls-verify=true -u {{ openshiftDevUser }} -p {{ openshiftDevPassword }} {{ openshiftAuthority }}"
+      tags:
+        - openshift
+        - build
+
+    - name: Set mssql server image build config environment variable
+      shell: "oc set env bc/{{ item.name }} ACCEPT_EULA='{{ item.acceptEula }}' SA_PASSWORD='{{ item.saPassword }}'"
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+      tags:
+        - database
+        - deploy
+        - buildconfig
+
+    # todo: pass the project name into this script
+    - name: Create database server
+      shell: >
+        oc login -u {{ openshiftAdminUser }} -p {{ openshiftAdminPassword }} {{ openshiftAuthority }}
+        && oc project {{ projectName }}
+        && oc start-build {{ item.name }} --from-dir={{ workDir }}/{{ item.name }} --follow
+        && oc new-app {{ item.name }} -l app={{ item.name }}
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - database
+        - mssql
+        - deploy
+
+    - name: Mount volumes
+      shell: >
+        mkdir -p {{ item.mount.hostPath }}
+        && sudo chmod -R 0777 {{ item.mount.hostPath }}
+        && oc login -u {{ openshiftAdminUser }} -p {{ openshiftAdminPassword }} {{ openshiftAuthority }}
+        && oc project {{ projectName }}
+        && oc volume deploymentconfig/{{ item.name }} --all --add -m={{ item.mount.podPath }} -t=hostPath --path={{ item.mount.hostPath }}
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - database
+        - mssql
+        - deploy
+        - mountvolumes
+
+    - name: Expose OpenShift applications
+      shell: "oc expose service {{ item.name }} --hostname={{ item.name }}.{{ projectName }}.{{ openshiftEnvironment }}.{{ openshiftDomain }} --path={{ item.endpoint | default('') }} --port={{ item.port }}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - openshift
+        - exposeservice
+
+    - name: Expose OpenShift applications (Management)
+      shell: "oc expose service {{ item.name }} --hostname={{ item.name }}.{{ projectName }}.{{ openshiftEnvironment }}.{{ openshiftDomain }} --path=/manage --port={{ item.managePort }} --name={{ item.name }}-manage"
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+      failed_when: "'exists' not in command_result.stderr and command_result.rc != 0"
+      changed_when: "'exists' not in command_result.stderr"
+      tags:
+        - openshift
+        - exposeservice
+
+    - name: Add exposed openshift application route to hosts file.
+      shell: "/usr/local/sbin/hostess add {{ item.name }}.{{ openshiftDomain }} {{openshiftHostname}}"
+      register: command_result
+      with_items: "{{ projects }}"
+      when:
+        - item.enabled | bool
+        - item.project == projectTypeMssql
+        - openshiftHostname == '127.0.0.1'
+      become: yes
+      tags:
+        - hostsfile
+
+    - include: inc-tests-deploy.yml
+ 

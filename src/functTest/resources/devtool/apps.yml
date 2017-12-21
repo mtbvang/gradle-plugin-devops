@@ -1,0 +1,6 @@
+---
+# FIXME Replace with generic project
+# Define all projects that the deploy.yml deployment script will look at. Projects can be disabled using the X_serviceEnabled variable.
+apps: []
+
+

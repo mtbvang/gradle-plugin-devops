@@ -1,0 +1,31 @@
+---
+- name: Install roles
+  become: yes
+  become_user: root
+  become_method: sudo
+  hosts: 
+    - all
+  vars:
+    public_key: ~/.ssh/dev.pub
+  pre_tasks:
+    - name: Gathering facts
+      setup:
+  roles:
+    - role: devtools
+      name: devtools
+      devtools_update_packages: yes
+      devtools_user: vagrant
+      devtools_password: vagrant
+      devtools_group: vagrant
+      tags: devtools
+    - role: openshift
+      tags: openshift
+  tasks:
+    - include: ../tests/inc_tests.yml 
+  environment:
+    http_proxy: "{{ lookup('env','http_proxy') }}"
+    HTTP_PROXY: "{{ lookup('env','HTTP_PROXY') }}"
+    https_proxy: "{{ lookup('env','https_proxy') }}"
+    HTTPS_PROXY: "{{ lookup('env','HTTPS_PROXY') }}"
+    NO_PROXY: "{{ lookup('env','NO_PROXY') }}"
+    no_proxy: "{{ lookup('env','no_proxy') }}"

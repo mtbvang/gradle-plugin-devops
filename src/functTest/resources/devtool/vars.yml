@@ -1,0 +1,126 @@
+---
+##
+# Any of the variables in this file can be overriden at run time using the --exra-vars parameter. For example if running ansible-playbook from the root of this project.
+# ansible-playbook ansible/deploy.yml --extra-vars="customerServiceEnabled=false eurekaServiceEnabled=false holdingsServiceEnabled=false commonArchiveEnabled=true workDir='/home/osboxes/code' iap_serviceEnabled=false" --tags=installdockerfile,debug
+# 
+# Or if used from gradle.build they can be overrriden using -Pkey=value parameters. For example -PnoProxy="localhost,127.0.0.1"
+##
+
+# Define the name of the OpenShift project
+projectName: 'local-development'
+
+noProxy: ""
+proxyServer: ""
+pon: ""
+winProxyServer: ""
+httpProxy: ""
+httpsProxy: ""
+
+dockeRegistry: ''
+defaultProjectEnabledValue: false
+
+##
+# Openshift vars
+##
+openshiftHostname: 127.0.0.1
+openshiftPort: 8443
+openshiftAuthority: "{{openshiftHostname}}:{{openshiftPort}}"
+openshiftPortHost: 8443
+openshiftPortForIntegrationTesting: 8445
+openshiftHAProxyTimeout: '120'
+openshiftServiceName: ''
+openshiftProject: {{ projectName }}
+openshiftPortforwardWait: 30
+openshiftDevUser: developer
+openshiftDevPassword: developer
+openshiftAdminUser: admin
+openshiftAdminPassword: admin
+openshiftDomain: openshift.local
+openshiftEnvironment: dev1
+openshiftDataDir: '/openshift/data'
+
+
+##
+# Vagrant vars
+##
+vagrantVMName: 'centos'
+vagrantProvider: 'virtualbox'
+vagrantGui: true
+vagrantVMMemory: 8192
+runAnsibleGalaxy: true
+vagrantVBGuest: false
+vagrantVMCPUs: 4
+vagrantPlugins: "vagrant-cachier vagrant-proxyconf vagrant-vbguest vagrant-registration"
+vagrantTesting: false
+vagrantProvisionOpts: ''
+vagrantOpenshiftHostForwardPort: 8443
+
+
+
+##
+# Vagrant vars
+##
+virtualboxVMName: 'localdev'
+
+##
+# Deploy vars requird by ansible yml files.
+##
+
+# Define the Absolute path where you want to checkout the sourcecode. Setting this allows this var file to be used by Ansible. In the devtool gradle plugin this gets set to project.projectDir
+projectDir: "{{ playbook_dir }}/.."
+workDir: '/home/vagrant/code'
+#workDir: "{{ playbook_dir }}/../.."
+
+ansibleTags: 'all'
+ansibleRolesPath: "/vagrant/{{projectName}}/provision/roles"
+ansibleVerbosity: ''
+ansibleWorkDir: "/home/vagrant/code"
+
+appPort: null
+buildPath: "{{ projectDir }}/build/${appName}/target"
+packaging: 'jar'
+appVersion: 'RELEASE'
+groupId: 'com.mtbvang'
+
+# If your application uses an special SCC, uncomment the following line to adjust the SCC
+adjustScc: false
+
+# Whether or not to clone projects. The project also needs to be enabled.
+cloneAppsCode: true
+
+buildProjects: true
+
+buildPathDefault: target
+
+javaMaxHeap: "-Xmx1024m"
+
+dockerWeb: httpd
+
+# Determines which dockerfile to use
+projectTypeWeb: web
+projectTypeSpringboot: springboot
+projectTypeZuul: zuul
+projectTypeMssql: mssql
+
+defaultProjectEnabledValue: false
+
+mssqlServerPort: 1433
+mssqlServerPortManage: 11333
+mssqlServerPortJmx: 1333
+mssqlServerPortJrebel: 1233
+mssqlServerPortRemotedebugging: 1133
+mssqlServerEnabled: "{{ defaultProjectEnabledValue }}"
+mssqlServerSaPassword: Th1s1sthesapassword!
+mssqlServerArtifactId: blank
+mssqlServerPackaging: blank
+mssqlServerVersion: blank
+mssqlServerGroupId: blank
+mssqlAppName: 'mssql-server'
+# FIXME refactor and remove duplicates
+mssqlPassword: 'Th1s1sthesapassword!'
+mssqlPorts: 1433
+
+
+jrebelConfig: "-agentpath:/tmp/lib/libjrebel64.so -Drebel.log.file=/tmp/jrebel.log -Drebel.log=trace -Drebel.base=/tmp -Drebel.remoting_plugin=true -Drebel.remoting_host=localhost"
+remoteDebug: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address="
+jmxConfig: "-Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port="
