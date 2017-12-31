@@ -30,7 +30,7 @@ buildscript {
 apply plugin: "devtool"
 ```
 
-The mavenLocal() allows to local publishing of the plugin for development and testing.
+The mavenLocal() allows for local publishing of the plugin for development and testing.
 
 Tasks
 -----------

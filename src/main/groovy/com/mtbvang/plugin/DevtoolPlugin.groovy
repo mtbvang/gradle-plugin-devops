@@ -96,7 +96,7 @@ class DevtoolPlugin implements Plugin<Project> {
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), project.projectDir)
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/keys"), project.projectDir)
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), project.projectDir)
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
+		//DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
 	}
 
 	private def dynamicallyConstructExtension(Project project, Map config, def extension) {
