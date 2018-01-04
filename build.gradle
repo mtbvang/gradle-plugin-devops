@@ -4,6 +4,7 @@ version = "${artifact_version}.${build_number}"
 apply plugin: 'groovy'
 apply plugin: 'maven'
 apply plugin: 'java-gradle-plugin'
+apply plugin: 'maven-publish'
 apply from: "$rootDir/gradle/integration-test.gradle"
 apply from: "$rootDir/gradle/functional-test.gradle"
 

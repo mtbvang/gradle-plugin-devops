@@ -93,10 +93,16 @@ class DevtoolPlugin implements Plugin<Project> {
 	private def addResourcesToRootProject(Project project) {
 		log.info("Copying devtool plugin resources to root project dir: ${project.projectDir}")
 
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), project.projectDir)
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/keys"), project.projectDir)
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), project.projectDir)
-		//DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
+		if(!(new File(project.projectDir, 'ansible').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), project.projectDir)
+		}
+		if(!(new File(project.projectDir, 'provision').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), project.projectDir)
+		}
+		if(!(new File(project.projectDir, 'Vagrantfile').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
+		}
+		
 	}
 
 	private def dynamicallyConstructExtension(Project project, Map config, def extension) {

@@ -33,13 +33,10 @@ class Vagrant {
 		
 		vagrantEnvVars << ["pon": "${project.devtool.pon}"]
 		vagrantEnvVars << ["ANSIBLE_GALAXY": "${project.devtool.runAnsibleGalaxy}"]
-		vagrantEnvVars << ["VAGRANT_HTTP_PROXY": "${project.devtool.httpProxy}"]
-		vagrantEnvVars << ["VAGRANT_HTTPS_PROXY": "${project.devtool.httpsProxy}"]
 		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
 		vagrantEnvVars << ["VM_MEMORY": "${project.devtool.vagrantVMMemory}"]
 		vagrantEnvVars << ["VM_GUI": "${project.devtool.vagrantGui}"]
 		vagrantEnvVars << ["VM_CPUS": "${project.devtool.vagrantVMCPUs}"]
-		vagrantEnvVars << ["VAGRANT_NO_PROXY": "${project.devtool.noProxy}"]
 		vagrantEnvVars << ["VB_GUEST": "${project.devtool.vagrantVBGuest}"]
 		vagrantEnvVars << ["OPENSHIFT_PORT_HOST": "${project.devtool.vagrantOpenshiftHostForwardPort}"]
 		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
