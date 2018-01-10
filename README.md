@@ -4,17 +4,19 @@ Warning: work in progress.
 
 Gradle plugin to help with local development by integrating with OpenShift, Vagrant and Docker. It's pretty tightly coupled and is being refactored. 
 
-[![Build Status](https://travis-ci.org/mtbvang/gradle-plugin-devtool.svg?branch=master)](https://travis-ci.org/mtbvang/gradle-plugin-devtool)
-
-Latest Version
---------------
-All versions can be found [here].
 
 Usage
 -----------
 
-Build script snippet for use in all Gradle versions:
+The plugin has not been published. It can be published locally with:
+
 ```
+./gradlew publishToMavenLocal
+```
+
+Build script snippet for use in all Gradle versions:
+
+```groovy
 buildscript {
   repositories {
     maven {
@@ -28,27 +30,39 @@ buildscript {
 }
 
 apply plugin: "devtool"
+
+devtool {
+
+}
+
 ```
 
 The mavenLocal() allows for local publishing of the plugin for development and testing.
 
-Tasks
------------
+All variables in var.yml become extensions and can be configured in build.gradle.
 
-
-```
 
 ## Configuration
 
 The plugin requires a var.yml file and apps.yml file in the root folder ofhe project. It will place default ones in there if one does not exist.
 
-All variables in var.yml become extensions and can be configured in build.gradle.
 
-#### build.gradle
-```groovy
-devtool {
+Development
+-----------
 
-}
-```
+Tests can be run with the following commands
+
+´´´
+./gradlew functionalTest -PfunctionalTestEnabled=true
+
+´´´
+
+Functional test with filtering of only specific tests with info:
+
+´´´
+./gradlew functionalTest -PfunctionalTestEnabled=true --tests *VagrantTest.vagrantUp -i
+´´´
+
+More information about test filtering https://docs.gradle.org/current/userguide/java_plugin.html#test_filtering
 
 [here]:https://plugins.gradle.org/plugin/com.mtbvang.devtool
