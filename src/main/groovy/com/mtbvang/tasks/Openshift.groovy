@@ -59,12 +59,13 @@ class Openshift {
 					log.info("Output of oc cluster status: \n" + outputAsString)
 					def match = outputAsString.find(/The OpenShift cluster was started/)
 					if (match == null ) {
-						log.info("Openshift not running. Starting it.")
-						project.exec {
-							commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc cluster up --http-proxy ${project.devtool.httpProxy} " \
-								+ "--https-proxy ${project.devtool.httpsProxy} --no-proxy ${project.devtool.noProxy} " \
-								+ "--public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir}'"
+						def upCommand = "oc cluster up --use-existing-config --public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir} "
+						if(project.devtool.httpsProxy != 'null' && project.devtool.httpsProxy.trim()) {
+							upCommand += "--http-proxy ${project.devtool.httpProxy} --https-proxy ${project.devtool.httpsProxy} --no-proxy ${project.devtool.noProxy} "
 						}
+						log.info("Openshift not running. Starting it with command: ${upCommand}")
+						project.exec {
+							commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c '${upCommand}'"					}
 						// Give admin user cluster-admin role
 						// FIXME this should be done as part of the provisioning
 						project.exec {

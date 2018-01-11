@@ -73,10 +73,6 @@ Vagrant.configure("2") do |config|
       vms.vm.synced_folder '../', '/vagrant', type: syncfolder_type , disabled: false
 
       vms.vm.provider "virtualbox" do |v|
-        unless VM_NAME.to_s.strip.empty?
-          #Required for testkit testing to cleanup VMs
-          v.name = VM_NAME
-        end
         v.gui = VM_GUI
         v.cpus = VM_CPUS
         v.customize ["modifyvm", :id, "--cpuexecutioncap", box[:cpu]]
