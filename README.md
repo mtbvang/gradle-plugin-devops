@@ -42,7 +42,7 @@ The mavenLocal() allows for local publishing of the plugin for development and t
 All variables in var.yml become extensions and can be configured in build.gradle.
 
 
-# Configuration
+## Configuration
 
 The plugin requires a var.yml file and apps.yml file in the root folder ofhe project. It will place default ones in there if one does not exist.
 
@@ -63,7 +63,7 @@ Functional test with filtering of only specific tests with info:
 ./gradlew functionalTest -PfunctionalTestEnabled=true --tests *VagrantTest.vagrantUp -i
 ´´´
 
-# Debugging
+## Debugging
 
 Debugging is turned on by:
 
