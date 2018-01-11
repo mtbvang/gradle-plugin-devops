@@ -18,3 +18,5 @@ gradle-app.setting
 /.classpath
 /.settings/
 /bin/
+/.idea/
+*.iml

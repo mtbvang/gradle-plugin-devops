@@ -10,7 +10,6 @@ yum makecache fast
 yum install -y wget git
 wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 rpm -ivh epel-release-latest-7.noarch.rpm
-yum -y install ansible
 
 # Work around for epel bug https://bugs.centos.org/view.php?id=13669&nbn=1
 rpm -ivh --replacepkgs https://kojipkgs.fedoraproject.org/packages/http-parser/2.7.1/3.el7/x86_64/http-parser-2.7.1-3.el7.x86_64.rpm

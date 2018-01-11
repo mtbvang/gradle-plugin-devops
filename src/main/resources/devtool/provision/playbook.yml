@@ -5,21 +5,24 @@
   become_method: sudo
   hosts: 
     - all
-  vars:
-    public_key: ~/.ssh/dev.pub
   pre_tasks:
     - name: Gathering facts
       setup:
   roles:
+    - role: openshift
+      tags: openshift
     - role: devtools
       name: devtools
       devtools_update_packages: yes
       devtools_user: vagrant
       devtools_password: vagrant
       devtools_group: vagrant
+      devtools_ansible_enabled: false
+      devtools_vagrant_enabled: false
+      devtools_dep_virtualbox_enabled: false
       tags: devtools
-    - role: openshift
-      tags: openshift
+    - role: openshift_client
+      name: openshift_client
   tasks:
     - include: ../tests/inc_tests.yml 
   environment:

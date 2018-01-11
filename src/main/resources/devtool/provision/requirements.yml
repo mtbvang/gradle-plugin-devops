@@ -1,7 +1,10 @@
 ---
 - src: https://github.com/mtbvang/ansible-role-devtools
   name: devtools
-  version: v0.1.1
+  version: v1.1.3
 - src: https://github.com/mtbvang/ansible-role-openshift.git
   name: openshift
-  version: v1.0.0
+  version: v1.3.0
+- src: https://github.com/mtbvang/ansible-role-openshift_client.git
+  name: openshift_client
+  version: v0.1.0

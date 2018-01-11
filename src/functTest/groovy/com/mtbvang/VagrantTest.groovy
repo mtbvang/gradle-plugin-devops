@@ -34,7 +34,7 @@ class VagrantTest extends FunctionalTest {
 	 */
 	void vagrantUp() {
 		try{
-			BuildResult result = super.runTask('vagrantUp', '--provision-with bootstrap,bootstrapCentos,ansibleGalaxy')
+			BuildResult result = super.runVagrantTask('vagrantUp', '--provision-with bootstrap,bootstrapCentos,ansibleGalaxy')
 			println("vagrantUp run output: " + result.output)
 			assertThat(result.output).contains("Bringing machine 'centos' up with 'virtualbox' provider")
 			assertThat(result.output).contains('Machine booted and ready!')
@@ -53,7 +53,7 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantReload() {
 		try {
-			BuildResult result = super.runTask('vagrantReload', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantReload', '--no-provision')
 			println("vagrantReload run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on')
 		} finally {
@@ -64,7 +64,7 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantReloadMaxPower() {
 		try {
-			BuildResult result = super.runTask('vagrantReloadMaxPower', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantReloadMaxPower', '--no-provision')
 			println("vagrantReloadMaxPower run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on')
 		} finally {
@@ -75,7 +75,7 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantHalt() {
 		try {
-			BuildResult result = super.runTask('vagrantHalt', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantHalt', '--no-provision')
 			println("vagrantHalt run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on')
 		} finally {
@@ -86,7 +86,7 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantRecreate() {
 		try {
-			BuildResult result = super.runTask('vagrantRecreate', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantRecreate', '--no-provision')
 			println("vagrantRecreate run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on').contains('Machine booted and ready!')
 		} finally {
@@ -97,7 +97,7 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantRecreateMaxPower() {
 		try {
-			BuildResult result = super.runTask('vagrantRecreateMaxPower', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantRecreateMaxPower', '--no-provision')
 			println("vagrantRecreateMaxPower run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on').contains('Machine booted and ready!')
 		} finally {
@@ -108,11 +108,13 @@ class VagrantTest extends FunctionalTest {
 	@Test
 	void vagrantDestroy() {
 		try {
-			BuildResult result = super.runTask('vagrantDestroy', '--no-provision')
+			BuildResult result = super.runVagrantTask('vagrantDestroy', '--no-provision')
 			println("vagrantDestroy run output: " + result.output)
 			assertThat(result.output).contains('VM not created. Moving on')
 		} finally {
 			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
 		}
 	}
+	
+	
 }

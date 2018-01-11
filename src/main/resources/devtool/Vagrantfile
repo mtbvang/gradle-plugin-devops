@@ -2,7 +2,8 @@
 # vi: set ft=ruby :
 
 #
-# Vagrantfile provided by gradle-plugin-devtool
+# Refer to README for usage. Only one VM can be spun up at once because of port forwarding conflicts.
+# If VM_GUI=true or TESTING=true then port forwarding is not run.
 #
 
 PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirname(__FILE__)))
@@ -10,12 +11,14 @@ PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirnam
 #
 # Environment variables that can be overriden on vagrant up
 #
+ANSIBLE_GALAXY_FORCE = ENV['ANSIBLE_GALAXY_FORCE'] || "--force"
 ANSIBLE_GALAXY = ENV['ANSIBLE_GALAXY'] == 'false' ? false : true
-VM_NAME = ENV['VM_NAME']
+ANSIBLE_VERSION = ENV['ANSIBLE_VERSION'] || '2.4.2.0'
 VM_CPUS = ENV['VM_CPUS'] || 4
-VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100
+VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100  
 VM_MEMORY = ENV['VM_MEMORY'] || 8192
 VM_GUI = ENV['VM_GUI'] == 'false' ? false : true
+VM_VB_NATDNSHOSTRESOLVER = ENV['VM_VB_NATDNSHOSTRESOLVER'] || 'off'
 VB_GUEST = ENV['VB_GUEST'] == 'true' ? true : false
 HTTP_PROXY = ENV['HTTP_PROXY']
 HTTPS_PROXY = ENV['HTTPS_PROXY']
@@ -28,10 +31,7 @@ boxes = [
   :name => "centos",
   :box => "boxcutter/centos7-desktop",
   :cpu => VM_CPU_CAP,
-  :ram => VM_MEMORY,
-  :primary => false,
-  :syncfolder_type => "none",
-  :private_ip => "10.0.2.16"
+  :ram => VM_MEMORY
   }
 ]
 
@@ -46,7 +46,8 @@ Vagrant.configure("2") do |config|
   end
 
   if Vagrant.has_plugin?("vagrant-proxyconf")
-    if(HTTP_PROXY.nil? || HTTP_PROXY.empty?)
+    if(HTTP_PROXY.nil? || HTTP_PROXY.empty? || HTTP_PROXY == 'null')
+      puts "Disabling proxy conf plugin. No proxy settings found."
       config.proxy.enabled = false
     else
       config.proxy.http = HTTP_PROXY
@@ -54,21 +55,21 @@ Vagrant.configure("2") do |config|
       config.proxy.no_proxy = NO_PROXY
     end
   end
-
+  
   boxes.each do |box|
     config.vm.define box[:name], primary: box[:primary] do |vms|
       vms.vm.box = box[:box]
-
+      
       if TESTING
         ANSIBLE_DRY_RUN = '--check'
-      else
-        ANSIBLE_DRY_RUN = ''
+       else
+         ANSIBLE_DRY_RUN = ''
         vms.vm.network "forwarded_port", guest: 8443, host: OPENSHIFT_PORT_HOST  # Openshift console
-      end
-
+       end
+            
       @syncfolder_type = 'virtualbox'
       if Vagrant::Util::Platform.windows? then
-        syncfolder_type = 'nfs'
+          syncfolder_type = 'nfs'
       end
       vms.vm.synced_folder '../', '/vagrant', type: syncfolder_type , disabled: false
 
@@ -78,8 +79,7 @@ Vagrant.configure("2") do |config|
         v.customize ["modifyvm", :id, "--cpuexecutioncap", box[:cpu]]
         v.customize ["modifyvm", :id, "--memory", box[:ram]]
         v.customize ["modifyvm", :id, "--ioapic", "on"]
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-        v.customize ['modifyvm', :id, '--cableconnected1', 'on']
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", VM_VB_NATDNSHOSTRESOLVER]
       end
 
       vms.vm.provider "vmware_workstation" do |v|
@@ -94,11 +94,23 @@ Vagrant.configure("2") do |config|
       elsif box[:name].eql? "centos"
         vms.vm.provision "bootstrapCentos", type: :shell, path: "provision/bootstrap_centos.sh"
       end
-      if ANSIBLE_GALAXY
-        vms.vm.provision "ansibleGalaxy", type: :shell, path: "provision/ansible_galaxy.sh", args: ['/vagrant/' + PROJECT_NAME + '/provision']
+      
+      vms.vm.provision "installAnsible", type: :shell do |s|
+        s.path = "provision/install_ansible.sh"
+        s.args = ANSIBLE_VERSION
       end
-      vms.vm.provision "ansiblePlaybook", type: :shell, inline: "ANSIBLE_STDOUT_CALLBACK=debug ansible-playbook --become -i 'localhost.localdomain,' -c local /vagrant/#{PROJECT_NAME}/provision/playbook.yml #{ANSIBLE_DRY_RUN} -v"
 
+      # Note: bootstrap_centos.sh install ansible
+      vms.vm.provision "ansible", type: :ansible_local do |ansible|
+        ansible.verbose = "v"
+        ansible.install_mode = "pip"
+        ansible.version = ANSIBLE_VERSION
+        ansible.playbook = "#{PROJECT_NAME}/provision/playbook.yml"
+        ansible.galaxy_role_file = "#{PROJECT_NAME}/provision/requirements.yml"
+        ansible.galaxy_roles_path = "#{PROJECT_NAME}/provision/roles"
+        ansible.galaxy_command = "ansible-galaxy install --ignore-certs --role-file=%{role_file} --roles-path=%{roles_path} #{ANSIBLE_GALAXY_FORCE}"
+        ansible.become = true
+      end
     end
   end
 

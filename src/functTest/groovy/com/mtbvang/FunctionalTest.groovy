@@ -32,10 +32,11 @@ class FunctionalTest {
 	void setup() {
 		println("Using testProjectDir: ${testProjectDir}")
 
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), testProjectDir.toFile());
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), testProjectDir.toFile());
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile());
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile());
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/tests"), testProjectDir.toFile())
 	}
 
 	Map getConfig() {
@@ -52,16 +53,50 @@ class FunctionalTest {
 		mappedConfig
 	}
 
-	BuildResult runTask(String taskName, String vagrantProvisionOpts) {
+	BuildResult runVagrantTask(String taskName, String vagrantProvisionOpts) {
 		BuildResult result = GradleRunner.create()
 				.withProjectDir(testProjectDir.toFile())
 				.withArguments(taskName,
 				'-PvagrantGui=false',
 				'-PvagrantTesting=true',
 				"-PvagrantProvisionOpts=${vagrantProvisionOpts}",
-				"-PvirtualboxVMName=${testProjectDir.toFile().getName()}")
+				"-PvirtualboxVMName=${testProjectDir.toFile().getName()}",
+				"-PvagrantVMCPUs=2",
+				"-PvagrantVMMemory=6144")
 				.withPluginClasspath()
 				.withDebug(true)
+				.build()
+	}
+	
+	BuildResult runVagrantTaskWithProvisioning(String taskName, int vagrantOpenshiftHostForwardPort) {
+		runVagrantTask(taskName, true, false, '--provision', "${testProjectDir.toFile().getName()}", vagrantOpenshiftHostForwardPort)
+	}
+
+	BuildResult runTaskWithNoProvisioning(String taskName, int vagrantOpenshiftHostForwardPort) {
+		runVagrantTask(taskName, true, false, '--no-provision', "${testProjectDir.toFile().getName()}", vagrantOpenshiftHostForwardPort)
+	}
+
+	BuildResult runVagrantTask(String taskName, boolean vagrantGui, boolean vagrantTesting, String vagrantProvisionOpts, String virtualboxVMName, int vagrantOpenshiftHostForwardPort) {
+		BuildResult result = GradleRunner.create()
+				.withProjectDir(testProjectDir.toFile())
+				.withArguments(taskName,
+				"-PvagrantGui=${vagrantGui}",
+				"-PvagrantTesting=${vagrantTesting}",
+				"-PvagrantProvisionOpts=${vagrantProvisionOpts}",
+				"-PvirtualboxVMName=${virtualboxVMName}",
+				"-PvagrantOpenshiftHostForwardPort=${vagrantOpenshiftHostForwardPort}",
+				"-PvagrantVMCPUs=2",
+				"-PvagrantVMMemory=6144")
+				.withPluginClasspath()
+				.build()
+	}
+	
+	BuildResult runOpenshiftTask(String taskName, int vagrantOpenshiftHostForwardPort) {
+		BuildResult result = GradleRunner.create()
+				.withProjectDir(testProjectDir.toFile())
+				.withArguments(taskName,
+				"-PvagrantOpenshiftHostForwardPort=${vagrantOpenshiftHostForwardPort}")
+				.withPluginClasspath()
 				.build()
 	}
 }
