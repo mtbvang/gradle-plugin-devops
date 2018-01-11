@@ -37,6 +37,7 @@ class Vagrant {
 		vagrantEnvVars << ["VM_MEMORY": "${project.devtool.vagrantVMMemory}"]
 		vagrantEnvVars << ["VM_GUI": "${project.devtool.vagrantGui}"]
 		vagrantEnvVars << ["VM_CPUS": "${project.devtool.vagrantVMCPUs}"]
+		vagrantEnvVars << ["VM_CPU_CAP": "${project.devtool.vagrantVMCPUCap}"]
 		vagrantEnvVars << ["VB_GUEST": "${project.devtool.vagrantVBGuest}"]
 		vagrantEnvVars << ["OPENSHIFT_PORT_HOST": "${project.devtool.vagrantOpenshiftHostForwardPort}"]
 		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]

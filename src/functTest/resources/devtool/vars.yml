@@ -50,6 +50,7 @@ vagrantVMMemory: 8192
 runAnsibleGalaxy: true
 vagrantVBGuest: false
 vagrantVMCPUs: 4
+vagrantVMCPUCap: 100
 vagrantPlugins: "vagrant-cachier vagrant-proxyconf vagrant-vbguest vagrant-registration"
 vagrantTesting: false
 vagrantProvisionOpts: ''
