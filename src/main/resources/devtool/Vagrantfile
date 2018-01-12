@@ -94,11 +94,6 @@ Vagrant.configure("2") do |config|
       elsif box[:name].eql? "centos"
         vms.vm.provision "bootstrapCentos", type: :shell, path: "provision/bootstrap_centos.sh"
       end
-      
-      vms.vm.provision "installAnsible", type: :shell do |s|
-        s.path = "provision/install_ansible.sh"
-        s.args = ANSIBLE_VERSION
-      end
 
       # Note: bootstrap_centos.sh install ansible
       vms.vm.provision "ansible", type: :ansible_local do |ansible|
