@@ -1,24 +1,15 @@
 package com.mtbvang
 
-import org.gradle.testkit.runner.BuildResult
-import org.gradle.testkit.runner.GradleRunner
-import org.junit.Before
-import org.junit.Ignore
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
-import static org.junit.Assert.*;
-import org.slf4j.*
-
-import java.util.stream.Collectors
-
 import static org.assertj.core.api.Assertions.assertThat
 import static org.gradle.testkit.runner.TaskOutcome.*
+import static org.junit.Assert.*;
+
+import org.gradle.testkit.runner.BuildResult
+import org.junit.Test
+import org.slf4j.*
 
 /*
- * We test that the vagrant commands are working correctly without ansible provisioning. We only do a dry run
- * of the ansible playbook. This speeds things up and provisioning testing is not necessary because that is 
- * tested in the individual ansible roles.
+ * The setup method that runs before all tasks ensures there's a non provisioned VM to run these tests against.
  * 
  * @author Vang Nguyen
  *
@@ -27,94 +18,93 @@ class VagrantTest extends FunctionalTest {
 
 	private static Logger log = LoggerFactory.getLogger(VagrantTest.class)
 
-	
+
 	@Test
-	/*
-	 * Testing vagrant up with all provisioners except ansible
-	 */
 	void vagrantUp() {
-		try{
-			BuildResult result = super.runVagrantTask('vagrantUp', '--provision-with bootstrap,bootstrapCentos,ansibleGalaxy')
-			println("vagrantUp run output: " + result.output)
-			assertThat(result.output).contains("Bringing machine 'centos' up with 'virtualbox' provider")
-			assertThat(result.output).contains('Machine booted and ready!')
-			assertThat(result.output).contains('Running provisioner: bootstrap (shell)...')
-			assertThat(result.output).contains('Running provisioner: bootstrapCentos (shell)...')
-			assertThat(result.output.replaceAll("\\s+","")).contains('Removed:centos:PackageKit.x86_640:1.1.5-1.el7.centos'.replaceAll("\\s+",""))
-			assertThat(result.output.replaceAll("\\s+","")).contains('Installed:centos:ansible.noarch'.replaceAll("\\s+",""))
-			assertThat(result.output.replaceAll("\\s+","")).doesNotContain('Vagrant environment or target machine is required to run this command'.replaceAll("\\s+",""))
-			assertThat(result.output.replaceAll("\\s+","")).doesNotContain('Vagrant cannot forward the specified ports on this VM'.replaceAll("\\s+",""))
-			result.task(':vagrantUp').outcome == SUCCESS
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		result = runVagrantTask('vagrantUp', '--no-provision')
+		assertThat(result.output).contains("Bringing machine 'centos' up with 'virtualbox' provider")
+		assertThat(result.output).contains('Machine not provisioned because `--no-provision` is specified.')
+		result.task(':vagrantUp').outcome == SUCCESS
 	}
 
 	@Test
 	void vagrantReload() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantReload', '--no-provision')
-			println("vagrantReload run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		BuildResult result = super.runVagrantTask('vagrantReload', '--no-provision')
+		assertThat(result.output).contains('Booting VM...')
+		assertThat(result.output).contains('Machine not provisioned because `--no-provision` is specified.')
+		result.task(':vagrantReload').outcome == SUCCESS
 	}
 
 	@Test
 	void vagrantReloadMaxPower() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantReloadMaxPower', '--no-provision')
-			println("vagrantReloadMaxPower run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		vagrantVMMemory = vagrantVMMemory + 1024
+		vagrantVMCPUs = vagrantVMCPUs + 1
+		result = super.runVagrantTask('vagrantReloadMaxPower', '--no-provision')
+		assertThat(result.output).contains('Booting VM...')
+		assertThat(result.output).contains('Machine not provisioned because `--no-provision` is specified.')
+		result.task(':vagrantReloadMaxPower').outcome == SUCCESS
+
+		// Could test if VM actually has max power settings by querying virtualbox
 	}
 
 	@Test
 	void vagrantHalt() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantHalt', '--no-provision')
-			println("vagrantHalt run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		result = super.runVagrantTask('vagrantHalt', '--no-provision')
+		assertThat(result.output).contains('Forcing shutdown of VM...')
+		result.task(':vagrantHalt').outcome == SUCCESS
+	}
+
+	@Test
+	void vagrantStatus() {
+		result = super.runTask('vagrantStatus')
+		assertThat(result.output).contains('running (virtualbox)')
+		result.task(':vagrantStatus').outcome == SUCCESS
 	}
 
 	@Test
 	void vagrantRecreate() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantRecreate', '--no-provision')
-			println("vagrantRecreate run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on').contains('Machine booted and ready!')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		result = super.runVagrantTask('vagrantRecreate', '--no-provision')
+		isVMProvisioned = false
+		assertThat(result.output).contains('Destroying VM and associated drives...')
+		assertThat(result.output).contains('Machine booted and ready!')
+		assertThat(result.output).contains('Machine not provisioned because `--no-provision` is specified')
+		result.task(':vagrantRecreate').outcome == SUCCESS
+
+		// Test for task ordering. VM should be in running state after recreate
+		result = super.runTask('vagrantStatus')
+		assertThat(result.output).contains('running (virtualbox)')
+		result.task(':vagrantStatus').outcome == SUCCESS
+
 	}
 
 	@Test
 	void vagrantRecreateMaxPower() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantRecreateMaxPower', '--no-provision')
-			println("vagrantRecreateMaxPower run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on').contains('Machine booted and ready!')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		vagrantVMMemory = vagrantVMMemory + 1024
+		vagrantVMCPUs = vagrantVMCPUs + 1
+		result = super.runVagrantTask('vagrantRecreateMaxPower', '--no-provision')
+		isVMProvisioned = false
+		assertThat(result.output).contains('Destroying VM and associated drives...')
+		assertThat(result.output).contains('Machine booted and ready!')
+		assertThat(result.output).contains('Machine not provisioned because `--no-provision` is specified')
+		result.task(':vagrantRecreateMaxPower').outcome == SUCCESS
+
+		result = super.runTask('vagrantStatus')
+		assertThat(result.output).contains('running (virtualbox)')
+		result.task(':vagrantStatus').outcome == SUCCESS
 	}
 
 	@Test
 	void vagrantDestroy() {
-		try {
-			BuildResult result = super.runVagrantTask('vagrantDestroy', '--no-provision')
-			println("vagrantDestroy run output: " + result.output)
-			assertThat(result.output).contains('VM not created. Moving on')
-		} finally {
-			TestUtils.vagrantCleanUp(super.testProjectDir.toFile())
-		}
+		result = super.runVagrantTask('vagrantDestroy')
+		assertThat(result.output).contains('Destroying VM and associated drives...')
+		result.task(':vagrantDestroy').outcome == SUCCESS
 	}
-	
-	
+
+	@Test
+	void vagrantProvision() {
+		runTask('vagrantHalt')
+		result = super.runVagrantTask('vagrantProvision')
+		assertThat(result.output).contains('VM is not currently running. Please, first bring it up with `vagrant up` then run this command.')
+		result.task(':vagrantProvision').outcome == SUCCESS
+	}
 }

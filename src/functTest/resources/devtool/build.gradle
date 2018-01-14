@@ -1,3 +1,32 @@
 plugins {
-	id 'devtool' 
+	id 'com.mtbvang.devtool' 
 }
+
+// Ordering for vagrantRecreate
+vagrantUp.mustRunAfter(vagrantDestroy)
+// Ordering for vagrantRecreateMaxPower
+vagrantRecreate.mustRunAfter(initVagrantMaxPower)
+// Ordering for vagrantReloadMaxPower
+vagrantReload.mustRunAfter(initVagrantMaxPower)
+// Ordering for openshiftRestart
+openshiftUp.mustRunAfter(openshiftHalt)
+openshiftPortForwardAll.mustRunAfter(openshiftUp)
+
+
+//		// Ordering for Devtool.upMaxPower
+//		project.getTaskByPluginName('up').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
+//		// Ordering for Devtool.up task
+//		project.getTaskByPluginName('deployAllFromNexus').mustRunAfter(project.getTaskByPluginName('openshiftUp'))
+//		project.getTaskByPluginName('openshiftUp').mustRunAfter(project.getTaskByPluginName('dockerStart'))
+//		project.getTaskByPluginName('dockerStart').mustRunAfter(project.getTaskByPluginName('vagrantUp'))
+//		project.getTaskByPluginName('vagrantUp').mustRunAfter(project.getTaskByPluginName('vagrantInstallPlugins'))
+//		// Ordering for Devtool.reload
+//		project.getTaskByPluginName('openshiftPortForwardAll').mustRunAfter(project.getTaskByPluginName('openshiftUp'))
+//		project.getTaskByPluginName('openshiftUp').mustRunAfter(project.getTaskByPluginName('dockerStart'))
+//		project.getTaskByPluginName('dockerStart').mustRunAfter(project.getTaskByPluginName('vagrantReload'))
+// 		// Ordering for Devtool.recreate
+//		project.getTaskByPluginName('up').mustRunAfter(project.getTaskByPluginName('destroy'))
+//		// Ordering for Devtool.recreateMaxPower
+//		project.getTaskByPluginName('recreate').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
+//		// Ordering for Evtoo.reloadMaxPower
+//		project.getTaskByPluginName('reload').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))

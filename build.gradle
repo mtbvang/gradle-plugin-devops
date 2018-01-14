@@ -1,5 +1,13 @@
-group = artifact_group
-version = "${artifact_version}.${build_number}"
+buildscript {
+  repositories {
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath "com.gradle.publish:plugin-publish-plugin:0.9.9"
+  }
+}
 
 apply plugin: 'groovy'
 apply plugin: 'maven'
@@ -7,10 +15,16 @@ apply plugin: 'java-gradle-plugin'
 apply plugin: 'maven-publish'
 apply from: "$rootDir/gradle/integration-test.gradle"
 apply from: "$rootDir/gradle/functional-test.gradle"
+apply plugin: "com.gradle.plugin-publish"
 
-repositories { mavenCentral() }
+repositories { 
+	mavenCentral() 
+	jcenter()
+}
 
 dependencies {
+	compile gradleApi()
+	compile localGroovy()
 	compile 'org.codehaus.groovy:groovy-all:2.4.12'
 	compile 'org.yaml:snakeyaml:1.17'
 	compile 'com.hubspot.jinjava:jinjava:2.2.8'
@@ -53,6 +67,24 @@ test {
 	}
 }
 
+group = artifact_group
+version = "${artifact_version}.${build_number}"
+
+pluginBundle {
+  website = 'http://www.gradle.org/'
+  vcsUrl = 'https://github.com/gradle/gradle'
+  description = 'Plugin for working with development environments'
+  tags = ['development', 'tools']
+
+  plugins {
+    greetingsPlugin {
+      id = "${artifact_group}.devtool"
+      displayName = 'Development environment plugin'
+    }
+  }
+}
+
 test.enabled = project.hasProperty('testEnabled').toBoolean() ? project.property('testEnabled').toBoolean() : false
 functionalTest.enabled = project.hasProperty('functionalTestEnabled').toBoolean() ? project.property('functionalTestEnabled').toBoolean() : false
 integrationTest.enabled = project.hasProperty('integrationTestEnabled').toBoolean() ? project.property('integrationTestEnabled').toBoolean() : false
+

@@ -21,7 +21,7 @@ import org.apache.commons.lang3.SystemUtils
 class Vagrant {
 
 	Logger log = LoggerFactory.getLogger(Vagrant.class)
-	
+
 	private def vagrantEnvVars = [:]
 	private def vagrantCommandEnvVars = ""
 
@@ -30,7 +30,7 @@ class Vagrant {
 		if (SystemUtils.IS_OS_WINDOWS && !project.devtool.pon) {
 			pon = 'source ~/.bash_profile && pon && '
 		}
-		
+
 		vagrantEnvVars << ["pon": "${project.devtool.pon}"]
 		vagrantEnvVars << ["ANSIBLE_GALAXY": "${project.devtool.runAnsibleGalaxy}"]
 		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
@@ -42,7 +42,7 @@ class Vagrant {
 		vagrantEnvVars << ["OPENSHIFT_PORT_HOST": "${project.devtool.vagrantOpenshiftHostForwardPort}"]
 		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
 		vagrantEnvVars << ["VAGRANT_TESTING": "${project.devtool.vagrantTesting}"]
-		
+
 		vagrantEnvVars.each{ k, v ->
 			if(v) {
 				log.info("Adding vagrant environment variable to map: {}: {}", k, v)
@@ -54,6 +54,7 @@ class Vagrant {
 		initVagrantMaxPower(project)
 		vagrantUp(project)
 		vagrantHalt(project)
+		vagrantStatus(project)
 		vagrantInstallPlugins(project)
 		vagrantReload(project)
 		vagrantReloadMaxPower(project)
@@ -62,14 +63,7 @@ class Vagrant {
 		vagrantRecreateMaxPower(project)
 		vagrantProvision(project)
 		vagrantProvisionWithAnsible(project)
-		vagrantInstallDockerfile(project)
-
-		//		// Ordering for vagrantReloadMaxPower
-		//		project.getTaskByPluginName('vagrantReload').mustRunAfter(project.getTaskByPluginName("initVagrantMaxPower"))
-		//		// Ordering for vagrantRecreate
-		//		project.getTaskByPluginName('vagrantUp').mustRunAfter(project.getTaskByPluginName('vagrantDestroy'))
-		//		// Ordering for vagrantRecreateMaxPower
-		//		project.getTaskByPluginName('vagrantRecreateMaxPower').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
+		vagrantInstallDockerfile(project)		
 
 	}
 
@@ -79,7 +73,7 @@ class Vagrant {
 
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('initVagrantMaxPower')) {
 			doFirst {
-				project.devtool.vagrantVMCPUs = 6
+				project.devtool.vagrantVMCPUs = 2
 				project.devtool.vagrantVMMemory = 10240
 				log.info("initVagrantMaxPower vagrantVMCPUs: {}, vagrantVMMemory: {}", project.devtool.vagrantVMCPUs, project.devtool.vagrantVMMemory)
 			}
@@ -103,12 +97,12 @@ class Vagrant {
 		"""
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantUp')) {
 			doFirst {
-				
+
 				def vagrantCommand = vagrantCommandEnvVars \
 					+ "vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
 
 				println("vagrant command: ${vagrantCommand}")
-				
+
 				project.exec {
 					ignoreExitValue false
 					commandLine "bash", "-c", vagrantCommand
@@ -122,9 +116,10 @@ class Vagrant {
 
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantDestroy')) {
 			doFirst {
-				project.exec { 
+				project.exec {
 					ignoreExitValue true
-					commandLine "bash", "-c", "vagrant destroy -f ${project.devtool.vagrantVMName}"}
+					commandLine "bash", "-c", "vagrant destroy -f ${project.devtool.vagrantVMName}"
+				}
 			}
 		}
 	}
@@ -135,6 +130,16 @@ class Vagrant {
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantHalt')) {
 			doFirst {
 				project.exec { commandLine "bash", "-c", "vagrant halt -f ${project.devtool.vagrantVMName}"}
+			}
+		}
+	}
+
+	private Task vagrantStatus(Project project) {
+		String description = 'Status the local development VM'
+
+		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantStatus')) {
+			doFirst {
+				project.exec { commandLine "bash", "-c", "vagrant status"}
 			}
 		}
 	}
@@ -176,14 +181,14 @@ class Vagrant {
 	   * Parameter: vagrantGui	  - True will bring up a desktop for the VM. 
 	   * Parameter: vagrantProvider  - default=virtualbox. The virutal machine provider to bring up the VM.
 		"""
-		
+
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantReload')) {
 			doFirst {
 				def vagrantCommand = vagrantCommandEnvVars \
 					+ "vagrant reload ${project.devtool.vagrantVMName} ${project.devtool.vagrantProvisionOpts}"
-					
+
 				println("vagrant command: ${vagrantCommand}")
-				
+
 				project.exec {
 					ignoreExitValue true
 					commandLine "bash", "-c", vagrantCommand
@@ -204,7 +209,7 @@ class Vagrant {
 
 	private Task vagrantRecreate(Project project) {
 		String description = 'Destroy and up the local development VM with default vagrant settings for VM such as RAM and CPU. Because of openshiftPortForwardAll task, this task can only be run from the host.'
-
+		
 		project.task([dependsOn: [
 				DevtoolUtils.getPluginTaskName('vagrantDestroy'),
 				DevtoolUtils.getPluginTaskName('vagrantUp')
@@ -216,7 +221,7 @@ class Vagrant {
 
 	private Task vagrantRecreateMaxPower(Project project) {
 		String description = 'Destroy and up the local development VM with default vagrant settings for VM such as RAM and CPU. Because of openshiftPortForwardAll task, this task can only be run from the host.'
-
+		
 		project.task([dependsOn: [
 				DevtoolUtils.getPluginTaskName('initVagrantMaxPower'),
 				DevtoolUtils.getPluginTaskName('vagrantRecreate')
@@ -230,12 +235,12 @@ class Vagrant {
 
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantProvision')) {
 			doLast {
-				
+
 				def vagrantCommand = vagrantCommandEnvVars \
 				+ "vagrant provision ${project.devtool.vagrantVMName} ${project.devtool.vagrantProvisionOpts}"
-				
+
 				println("vagrant command: ${vagrantCommand}")
-				
+
 				project.exec {
 					ignoreExitValue true
 					commandLine "bash", "-c", vagrantCommand

@@ -27,9 +27,6 @@ class Openshift {
 		openshiftRestart(project)
 		openshiftHalt(project)
 		
-		// Ordering for openshiftRestart
-		project.getTaskByPluginName('openshiftUp').shouldRunAfter(project.getTaskByPluginName('openshiftHalt'))
-		project.getTaskByPluginName('openshiftPortForwardAll').shouldRunAfter(project.getTaskByPluginName('openshiftUp'))
 
 	}
 
@@ -77,19 +74,6 @@ class Openshift {
 						log.info("Openshift already running")
 					}
 				}
-
-				// Test openshift is working with a curl
-				new ByteArrayOutputStream().withStream { os ->
-					def result = project.exec {
-						commandLine "bash", "-c", "oc login --insecure-skip-tls-verify=true -u ${project.devtool.openshiftDevUser} -p ${project.devtool.openshiftDevPassword} https://${project.devtool.openshiftHostname}:${project.devtool.openshiftPort} && oc get projects"
-						standardOutput = os
-					}
-					def outputAsString = os.toString()
-					log.info(outputAsString)
-					def match = outputAsString.find(/Login successful/)
-					assert match != null : "Login failed."
-				}
-
 			}
 		}
 	}
@@ -112,8 +96,8 @@ class Openshift {
 	private Task openshiftPortForwardAll(Project project) {
 		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName("openshiftPortForwardAll")) {
 			doLast {
-				project.ext.enableAllProjects()
-				project.ext.openshiftPortForwardAllFromHost()
+//				project.ext.enableAllProjects()
+				OpenshiftUtils.portForwardAll(project)
 			}
 		}
 	}

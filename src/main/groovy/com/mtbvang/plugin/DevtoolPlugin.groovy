@@ -42,42 +42,15 @@ class DevtoolPlugin implements Plugin<Project> {
 		Tests tests = new Tests(project, extension)
 		Devtool devtool = new Devtool(project)
 
-		// Task dependencies for devtool level dependencies. All other dependencies go with their respective classes.
-
-		// Ordering for vagrantReloadMaxPower
-		//		project.getTaskByPluginName('vagrantReload').mustRunAfter(project.getTaskByPluginName("initVagrantMaxPower"))
-		//		// Ordering for vagrantRecreate
-		//		project.getTaskByPluginName('vagrantUp').mustRunAfter(project.getTaskByPluginName('vagrantDestroy'))
-		//		// Ordering for vagrantRecreateMaxPower
-		//		project.getTaskByPluginName('vagrantRecreateMaxPower').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
-		//
-		//		// Ordering for Devtool.upMaxPower
-		//		project.getTaskByPluginName('up').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
-		//		// Ordering for Devtool.up task
-		//		project.getTaskByPluginName('deployAllFromNexus').mustRunAfter(project.getTaskByPluginName('openshiftUp'))
-		//		project.getTaskByPluginName('openshiftUp').mustRunAfter(project.getTaskByPluginName('dockerStart'))
-		//		project.getTaskByPluginName('dockerStart').mustRunAfter(project.getTaskByPluginName('vagrantUp'))
-		//		project.getTaskByPluginName('vagrantUp').mustRunAfter(project.getTaskByPluginName('vagrantInstallPlugins'))
-		//		// Ordering for Devtool.reload
-		//		project.getTaskByPluginName('openshiftPortForwardAll').mustRunAfter(project.getTaskByPluginName('openshiftUp'))
-		//		project.getTaskByPluginName('openshiftUp').mustRunAfter(project.getTaskByPluginName('dockerStart'))
-		//		project.getTaskByPluginName('dockerStart').mustRunAfter(project.getTaskByPluginName('vagrantReload'))
-		//		// Ordering for Devtool.recreate
-		//		project.getTaskByPluginName('up').mustRunAfter(project.getTaskByPluginName('destroy'))
-		//		// Ordering for Devtool.recreateMaxPower
-		//		project.getTaskByPluginName('recreate').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
-		//		// Ordering for Evtoo.reloadMaxPower
-		//		project.getTaskByPluginName('reload').mustRunAfter(project.getTaskByPluginName('initVagrantMaxPower'))
-
 	}
-	
+
 	private def setProxy(Project project, Map config) {
 		def envVarHttpProxy = "$System.env.HTTP_PROXY"
 		def envVarHttpsProxy = "$System.env.HTTPS_PROXY"
 		def envVarNoProxy = "$System.env.NO_PROXY"
-		
+
 		println("envVarHttpProxy: ${envVarHttpProxy}")
-		
+
 		if(!project.devtool.httpProxy) {
 			project.devtool.httpProxy = envVarHttpProxy
 		}
@@ -102,7 +75,15 @@ class DevtoolPlugin implements Plugin<Project> {
 		if(!(new File(project.projectDir, 'Vagrantfile').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
 		}
-		
+
+		if(!(new File(project.projectDir, 'apps.yml').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), project.projectDir)
+		}
+
+		if(!(new File(project.projectDir, 'vars.yml').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), project.projectDir)
+		}
+
 	}
 
 	private def dynamicallyConstructExtension(Project project, Map config, def extension) {

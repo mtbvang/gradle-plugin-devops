@@ -14,6 +14,7 @@ PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirnam
 ANSIBLE_GALAXY_FORCE = ENV['ANSIBLE_GALAXY_FORCE'] || "--force"
 ANSIBLE_GALAXY = ENV['ANSIBLE_GALAXY'] == 'false' ? false : true
 ANSIBLE_VERSION = ENV['ANSIBLE_VERSION'] || '2.4.2.0'
+VM_NAME = ENV['VM_NAME']
 VM_CPUS = ENV['VM_CPUS'] || 4
 VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100  
 VM_MEMORY = ENV['VM_MEMORY'] || 8192
@@ -74,6 +75,10 @@ Vagrant.configure("2") do |config|
       vms.vm.synced_folder '../', '/vagrant', type: syncfolder_type , disabled: false
 
       vms.vm.provider "virtualbox" do |v|
+        unless VM_NAME.to_s.strip.empty?
+          #Required for testkit testing to cleanup VMs
+          v.name = VM_NAME
+        end
         v.gui = VM_GUI
         v.cpus = VM_CPUS
         v.customize ["modifyvm", :id, "--cpuexecutioncap", box[:cpu]]

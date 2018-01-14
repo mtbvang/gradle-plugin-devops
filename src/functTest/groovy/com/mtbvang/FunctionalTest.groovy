@@ -1,42 +1,92 @@
 package com.mtbvang
 
-import com.hubspot.jinjava.Jinjava
-import com.mtbvang.DevtoolFileUtils
-
-import java.nio.file.Path
-import java.util.Map
-
-import org.gradle.api.Project
-import org.gradle.testkit.runner.BuildResult
-import org.yaml.snakeyaml.Yaml
-import org.slf4j.*
-import org.gradle.testkit.runner.GradleRunner
 import static org.gradle.testkit.runner.TaskOutcome.*
 
-import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.ClassRule;
-import org.junit.rules.TemporaryFolder;
 import java.nio.file.*
-
 import java.nio.file.attribute.*
 
+import org.gradle.testkit.runner.BuildResult
+import org.gradle.testkit.runner.GradleRunner
+import org.junit.AfterClass
+import org.junit.Before
+import org.slf4j.*
+import org.yaml.snakeyaml.Yaml
+
+import com.hubspot.jinjava.Jinjava
+
+/*
+ * Tests tasks using the 
+ */
 class FunctionalTest {
 	private static Logger log = LoggerFactory.getLogger(FunctionalTest.class)
 	// FIXME revert back to using TemporaryFolder to get auto clean up
 	//@ClassRule public static final TemporaryFolder testProjectDir = new TemporaryFolder();
-	public final Path testProjectDir = Files.createTempDirectory('devtool')
-	//public final Path testProjectDir = new File('/tmp/devtoolTesting').toPath()
-	
+	public static Path testProjectDir
+	//public static final Path testProjectDir = new File('/tmp/devtool2450998320394310883').toPath()
+
+	protected static def vagrantOpenshiftHostForwardPort
+
+	static BuildResult result
+
+	static boolean isVMProvisioned = false;
+
+	static def vagrantVMCPUs
+	static def vagrantVMMemory
+
+
 	@Before
 	void setup() {
-		println("Using testProjectDir: ${testProjectDir}")
 
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/tests"), testProjectDir.toFile())
+		println("Test setup called.")
+		
+		vagrantVMCPUs = 2
+		vagrantVMMemory = 6144
+		
+		println("isVMProvisioned: " + isVMProvisioned)
+
+		if(!testProjectDir) {
+			testProjectDir = Files.createTempDirectory('devtool')
+			println("Creating test dir: " + testProjectDir)
+			copyTestFiles()
+			vagrantOpenshiftHostForwardPort = TestUtils.getRandomPort(9999, 8999)
+		}
+
+		// The test runner currently throws an error because of mustRunAfter constraints. Can run tests on running VM if we want the contraints.
+		ensureVMRunning()
+	}
+
+	void ensureVMRunning() {
+		println("Ensuring VM is running as test fixture for all tests...")
+		def sout = new StringBuilder(), serr = new StringBuilder()
+		"chmod a+x testSetup.sh".execute(null, testProjectDir.toFile())
+		Process proc = "./testSetup.sh ${testProjectDir.toFile().getName()} ${vagrantVMMemory} false ${vagrantVMCPUs} 100 ${vagrantOpenshiftHostForwardPort}".execute(null, testProjectDir.toFile())
+		proc.consumeProcessOutput(sout, serr)
+		proc.waitFor()
+		println "out> $sout err> $serr"
+	}
+
+	void ensureVMIsProvisioned() {
+		if(!isVMProvisioned) {
+			println("Provisioning VM. This might take over 10 minutes...")
+			def sout = new StringBuilder(), serr = new StringBuilder()
+			"chmod a+x provisionTestVM.sh".execute(null, testProjectDir.toFile())
+			Process proc = "./provisionTestVM.sh".execute(null, testProjectDir.toFile())
+			proc.consumeProcessOutput(sout, serr)
+			proc.waitFor()
+			println "out> $sout err> $serr"
+			isVMProvisioned = true
+		}
+	}
+
+	@AfterClass
+	static void cleanUp() {
+
+		isVMProvisioned = false
+		result = null
+
+		println("Cleaning up after tests. Deleting " + testProjectDir.toFile())
+		TestUtils.vagrantCleanUp(testProjectDir.toFile())
+
 	}
 
 	Map getConfig() {
@@ -53,50 +103,72 @@ class FunctionalTest {
 		mappedConfig
 	}
 
+	BuildResult runVagrantTask(String taskName) {
+
+		runVagrantTask(taskName, false, "")
+
+	}
+
 	BuildResult runVagrantTask(String taskName, String vagrantProvisionOpts) {
-		BuildResult result = GradleRunner.create()
-				.withProjectDir(testProjectDir.toFile())
-				.withArguments(taskName,
-				'-PvagrantGui=false',
-				'-PvagrantTesting=true',
-				"-PvagrantProvisionOpts=${vagrantProvisionOpts}",
-				"-PvirtualboxVMName=${testProjectDir.toFile().getName()}",
-				"-PvagrantVMCPUs=2",
-				"-PvagrantVMMemory=6144")
-				.withPluginClasspath()
-				.withDebug(true)
-				.build()
-	}
-	
-	BuildResult runVagrantTaskWithProvisioning(String taskName, int vagrantOpenshiftHostForwardPort) {
-		runVagrantTask(taskName, true, false, '--provision', "${testProjectDir.toFile().getName()}", vagrantOpenshiftHostForwardPort)
+
+		runVagrantTask(taskName, false, vagrantProvisionOpts)
+
 	}
 
-	BuildResult runTaskWithNoProvisioning(String taskName, int vagrantOpenshiftHostForwardPort) {
-		runVagrantTask(taskName, true, false, '--no-provision', "${testProjectDir.toFile().getName()}", vagrantOpenshiftHostForwardPort)
+	BuildResult runVagrantForceProvisioning(String taskName) {
+		runVagrantTask(taskName, false, '--provision')
 	}
 
-	BuildResult runVagrantTask(String taskName, boolean vagrantGui, boolean vagrantTesting, String vagrantProvisionOpts, String virtualboxVMName, int vagrantOpenshiftHostForwardPort) {
+	BuildResult runVagrantTask(String taskName, boolean vagrantGui, String vagrantProvisionOpts) {
 		BuildResult result = GradleRunner.create()
 				.withProjectDir(testProjectDir.toFile())
 				.withArguments(taskName,
 				"-PvagrantGui=${vagrantGui}",
-				"-PvagrantTesting=${vagrantTesting}",
 				"-PvagrantProvisionOpts=${vagrantProvisionOpts}",
-				"-PvirtualboxVMName=${virtualboxVMName}",
 				"-PvagrantOpenshiftHostForwardPort=${vagrantOpenshiftHostForwardPort}",
-				"-PvagrantVMCPUs=2",
-				"-PvagrantVMMemory=6144")
+				"-PvirtualboxVMName=${testProjectDir.toFile().getName()}",
+				"-PvagrantVMCPUs=${vagrantVMCPUs}",
+				"-PvagrantVMMemory=${vagrantVMMemory}")
 				.withPluginClasspath()
+				.forwardOutput()
 				.build()
 	}
-	
-	BuildResult runOpenshiftTask(String taskName, int vagrantOpenshiftHostForwardPort) {
+
+	BuildResult runTask(String taskName) {
 		BuildResult result = GradleRunner.create()
 				.withProjectDir(testProjectDir.toFile())
-				.withArguments(taskName,
-				"-PvagrantOpenshiftHostForwardPort=${vagrantOpenshiftHostForwardPort}")
+				.withArguments(taskName)
 				.withPluginClasspath()
+				.forwardOutput()
 				.build()
+	}
+
+	BuildResult runTaskExpectingFail(String taskName) {
+		BuildResult result = GradleRunner.create()
+				.withProjectDir(testProjectDir.toFile())
+				.withArguments(taskName)
+				.withPluginClasspath()
+				.forwardOutput()
+				.buildAndFail()
+	}
+
+	void copyTestFiles() {
+
+		if(Files.exists(Paths.get(testProjectDir.toString(), 'Vagrantfile'))) {
+			println("Vagrantfile exists. Not copying over files for testing.")
+			return
+		}
+
+		println("Copying over resource files for testing to: ${testProjectDir}")
+
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/tests"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/testSetup.sh"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provisionTestVM.sh"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), testProjectDir.toFile())
+		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), testProjectDir.toFile())
 	}
 }
