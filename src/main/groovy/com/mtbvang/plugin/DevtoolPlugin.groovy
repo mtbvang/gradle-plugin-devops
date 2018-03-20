@@ -1,23 +1,18 @@
 package com.mtbvang.plugin
 
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.slf4j.*
+import org.yaml.snakeyaml.Yaml
+
 import com.hubspot.jinjava.Jinjava
 import com.mtbvang.DevtoolFileUtils
 import com.mtbvang.DevtoolUtils
 import com.mtbvang.Tests
-import com.mtbvang.tasks.Deploy
 import com.mtbvang.tasks.Devtool
 import com.mtbvang.tasks.Docker
 import com.mtbvang.tasks.Openshift
 import com.mtbvang.tasks.Vagrant
-
-import java.nio.file.Path
-
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.plugins.ExtensionContainer
-import org.yaml.snakeyaml.Yaml
-import org.slf4j.*
 
 //@Slf4j
 class DevtoolPlugin implements Plugin<Project> {
@@ -38,7 +33,6 @@ class DevtoolPlugin implements Plugin<Project> {
 		Docker docker = new Docker(project)
 		Openshift openshift = new Openshift(project)
 		Vagrant vagrant = new Vagrant(project)
-		Deploy deploy = new Deploy(project)
 		Tests tests = new Tests(project, extension)
 		Devtool devtool = new Devtool(project)
 
@@ -66,18 +60,11 @@ class DevtoolPlugin implements Plugin<Project> {
 	private def addResourcesToRootProject(Project project) {
 		log.info("Copying devtool plugin resources to root project dir: ${project.projectDir}")
 
-		if(!(new File(project.projectDir, 'ansible').exists())) {
-			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), project.projectDir)
-		}
 		if(!(new File(project.projectDir, 'provision').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), project.projectDir)
 		}
 		if(!(new File(project.projectDir, 'Vagrantfile').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
-		}
-
-		if(!(new File(project.projectDir, 'apps.yml').exists())) {
-			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), project.projectDir)
 		}
 
 		if(!(new File(project.projectDir, 'vars.yml').exists())) {
@@ -130,11 +117,6 @@ class DevtoolPlugin implements Plugin<Project> {
 		String renderedVars = new Jinjava().render(("${project.projectDir}/vars.yml" as File).getText("UTF-8"), vars)
 		vars = ymlParser.load(renderedVars)
 
-		String renderedProjects = new Jinjava().render(("${project.projectDir}/apps.yml" as File).getText("UTF-8"), vars)
-		Map mappedConfig = ymlParser.load(renderedProjects)
-		mappedConfig += vars
-
-		mappedConfig
 	}
 
 	private void addMetaClassMethods(Project project) {

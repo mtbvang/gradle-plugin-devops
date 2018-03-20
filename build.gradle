@@ -67,6 +67,11 @@ test {
 	}
 }
 
+functionalTest {
+	environment 'GIT_USERNAME', 'foo'
+	environment 'GIT_PASSWORD', 'bar'
+}
+
 group = artifact_group
 version = "${artifact_version}.${build_number}"
 
@@ -88,3 +93,66 @@ test.enabled = project.hasProperty('testEnabled').toBoolean() ? project.property
 functionalTest.enabled = project.hasProperty('functionalTestEnabled').toBoolean() ? project.property('functionalTestEnabled').toBoolean() : false
 integrationTest.enabled = project.hasProperty('integrationTestEnabled').toBoolean() ? project.property('integrationTestEnabled').toBoolean() : false
 
+task packerInit() { 
+	doFirst {
+		exec { 
+			commandLine "bash", "-c", """
+				mkdir -p build
+				curl https://releases.hashicorp.com/packer/1.1.2/packer_1.1.2_linux_amd64.zip --output build/packer_1.1.2_linux_amd64.zip 
+				unzip -o build/packer_1.1.2_linux_amd64.zip -d build
+				if [ -e  /usr/local/sbin/packer ]; then packer --version; else sudo cp build/packer /usr/local/sbin/packer; fi
+				if cd build/packer-centos; then git pull; else mkdir -p build/packer-centos && git clone https://github.com/mtbvang/packer-centos build/packer-centos; fi
+			"""
+		}
+	}
+}
+
+task packerBuild(dependsOn: packerInit) { 
+	description 'Builds the required boxes with packer.'
+	
+	doFirst {	
+		exec { 
+			workingDir 'build/packer-centos'
+			commandLine "bash", "-c", "packer build -only=virtualbox-iso -var-file=centos7-desktop.json centos.json"
+		}
+	}
+	group = "Packer"
+	
+}
+
+ext.vagrantAddBox = { boxName, boxProvider, boxFile ->
+
+	new ByteArrayOutputStream().withStream { os ->   
+		exec {
+			ignoreExitValue = false
+			commandLine "bash", "-c", 'vagrant box list'
+			standardOutput = os
+		}
+		if(os.toString().find(/${ boxName } \(${ boxProvider }/)) {
+			println("${ boxName } box for ${ boxProvider } already exist. Not adding")
+		}else { 
+			println("${ boxName } box for ${ boxProvider } not found. Adding.")
+			exec {
+				commandLine "bash", "-c", "vagrant box add ${ boxName } ${ boxFile } --provider ${ boxProvider }"
+			}
+		}
+	}  
+
+}
+
+
+task packerAddBoxes { 
+	description 'Added boxes to vagrant'
+	doFirst {
+		vagrantAddBox('boxcutter/centos7-desktop', 'virtualbox', 'build/packer-centos/box/virtualbox/centos7-desktop-0.0.99.box')
+	}
+	group = "Packer"
+}
+
+task packer(dependsOn: [
+	'packerBuild', 
+	'packerAddBoxes'
+]) { 
+	description 'Build and add required vagrant boxes.'
+	packerAddBoxes.mustRunAfter(packerBuild)
+}

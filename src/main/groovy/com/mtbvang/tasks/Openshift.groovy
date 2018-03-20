@@ -3,27 +3,21 @@
  */
 package com.mtbvang.tasks
 
-import java.util.Map
-
+import com.mtbvang.DevtoolUtils
+import com.mtbvang.OpenshiftUtils
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.mtbvang.DevtoolUtils
-import com.mtbvang.OpenshiftUtils
-
-
 class Openshift {
 
 	Logger log = LoggerFactory.getLogger(Openshift.class)
 
-	public Openshift(Project project) {
+	Openshift(Project project) {
 		super();
 		openshiftStatus(project)
 		openshiftUp(project)
-		openshiftPortForwardApp(project)
-		openshiftPortForwardAll(project)
 		openshiftRestart(project)
 		openshiftHalt(project)
 		
@@ -79,35 +73,11 @@ class Openshift {
 	}
 
 
-	private Task openshiftPortForwardApp(Project project) {
-		Task newTask
-		project.devtool.apps.each { projectConfig ->
-			newTask = project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName("openshiftPortForward-${projectConfig.name}")) {
-				log.info("Task created: ${this}")
-				doLast {
-					project.devtool.("${projectConfig.name}Enabled".camelCase()) = true
-					OpenshiftUtils.portForwardApp(project, projectConfig.name)
-				}
-			}
-		}
-		return newTask
-	}
-
-	private Task openshiftPortForwardAll(Project project) {
-		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName("openshiftPortForwardAll")) {
-			doLast {
-//				project.ext.enableAllProjects()
-				OpenshiftUtils.portForwardAll(project)
-			}
-		}
-	}
-
 	private Task openshiftRestart(Project project) {
 		String description = 'Restart openshift in the local development VM. Does an openshiftHalt, openshiftUp and openshift'
 		project.task([dependsOn: [
 				'openshiftHalt',
-				'openshiftUp',
-				'openshiftPortForwardAll'
+				'openshiftUp'
 			], group: ['Openshift'], description: description], DevtoolUtils.getPluginTaskName('openshiftRestart')) {
 
 		}

@@ -56,40 +56,4 @@ public final class DevtoolUtils {
 		downloadFromNexus(project, true, project.devtool.appName, project.devtool.artifactId, project.devtool.version, project.devtool.packaging, project.devtool.groupId)
 	}
 
-
-	public static String undeployApp(Project project, String appName) {
-		String description = 'Undeploys the specified app from openshift'
-		project.exec {
-			commandLine "bash", "-c", "oc delete all -l app=${appName}"
-		}
-	}
-
-	public static String undeployAllApps(Project project) {
-		String description = 'Undeploys all apps from openshift'
-		project.devtool.apps.each { undeployApp(project, it.name) }
-	}
-
-	public static portForward(Project project) {
-		String description = 'Setup port forwarding to access services running in openshift from host.'
-
-		// Only portforward for local development environment
-		if(project.devtool.openshiftHostname == '127.0.0.1') {
-			def killcommand = "kill \$(ps aux | grep 'port-forward' | awk '{print \$2}')"
-			if (SystemUtils.IS_OS_WINDOWS) {
-				killcommand = "kill \$(ps aux | grep 'openshiftclient' | awk '{print \$1}')"
-			}
-
-			project.exec {
-				ignoreExitValue = true
-				commandLine "bash", "-c", killcommand
-			}
-
-			project.devtool.apps.each { OpenshiftUtils.portForwardApp(project, it.name) }
-		} else {
-			println "Not port forwarding. Port forwarding only done for local host 127.0.0.1"
-		}
-
-
-	}
-
 }

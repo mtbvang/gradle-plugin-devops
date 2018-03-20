@@ -89,20 +89,6 @@ class FunctionalTest {
 
 	}
 
-	Map getConfig() {
-		Yaml ymlParser = new Yaml()
-
-		Map vars = ymlParser.load(("${testProjectDir}/ansible/vars.yml" as File).text)
-		String renderedVars = new Jinjava().render(("${testProjectDir}/ansible/vars.yml" as File).getText("UTF-8"), vars)
-		vars = ymlParser.load(renderedVars)
-
-		String renderedProjects = new Jinjava().render(("${testProjectDir}/ansible/apps.yml" as File).getText("UTF-8"), vars)
-		Map mappedConfig = ymlParser.load(renderedProjects)
-		mappedConfig += vars
-
-		mappedConfig
-	}
-
 	BuildResult runVagrantTask(String taskName) {
 
 		runVagrantTask(taskName, false, "")
@@ -161,14 +147,12 @@ class FunctionalTest {
 
 		println("Copying over resource files for testing to: ${testProjectDir}")
 
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/apps.yml"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/tests"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/testSetup.sh"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provisionTestVM.sh"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/ansible"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), testProjectDir.toFile())
 	}
 }

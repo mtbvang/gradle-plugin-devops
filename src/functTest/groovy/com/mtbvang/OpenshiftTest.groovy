@@ -41,14 +41,6 @@ class OpenshiftTest extends FunctionalTest {
 	}
 
 	@Test
-	void openshiftPortForwardAll() {
-
-		ensureVMIsProvisioned()
-		result = runTask('openshiftPortForwardAll')
-		result.task(':openshiftPortForwardAll').outcome == SUCCESS
-	}
-
-	@Test
 	void openshiftHalt() {
 
 		ensureVMIsProvisioned()

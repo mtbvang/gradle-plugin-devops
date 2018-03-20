@@ -63,7 +63,6 @@ class Vagrant {
 		vagrantRecreateMaxPower(project)
 		vagrantProvision(project)
 		vagrantProvisionWithAnsible(project)
-		vagrantInstallDockerfile(project)		
 
 	}
 
@@ -97,9 +96,10 @@ class Vagrant {
 		"""
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantUp')) {
 			doFirst {
-
+				def gitUsername = System.getenv("GIT_USERNAME") ?: System.console().readLine('What is your git username?:')
+				def gitPassword = System.getenv("GIT_PASSWORD") ?: System.console().readPassword('What is your git password?:')
 				def vagrantCommand = vagrantCommandEnvVars \
-					+ "vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
+					+ "GIT_USERNAME='${gitUsername}' GIT_PASSWORD=${gitPassword} vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
 
 				println("vagrant command: ${vagrantCommand}")
 
@@ -260,14 +260,5 @@ class Vagrant {
 			}
 		}
 	}
-
-	private Task vagrantInstallDockerfile(Project project) {
-		String description = 'Copies over the master Dockerfile to the individual projects to deploy.'
-
-		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantInstallDockerfile')) {
-			doLast {
-				project.exec { commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'ANSIBLE_STDOUT_CALLBACK=debug ansible-playbook  ${project.devtool.ansibleWorkDir}/${project.name}/ansible/deploy.yml --tags=installdockerfile'" }
-			}
-		}
-	}
+	
 }

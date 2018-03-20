@@ -14,10 +14,10 @@ PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirnam
 ANSIBLE_GALAXY_FORCE = ENV['ANSIBLE_GALAXY_FORCE'] || "--force"
 ANSIBLE_GALAXY = ENV['ANSIBLE_GALAXY'] == 'false' ? false : true
 ANSIBLE_VERSION = ENV['ANSIBLE_VERSION'] || '2.4.2.0'
-VM_NAME = ENV['VM_NAME']
-VM_CPUS = ENV['VM_CPUS'] || 4
-VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100  
-VM_MEMORY = ENV['VM_MEMORY'] || 8192
+VM_NAME = ENV['VM_NAME'] || 'gradle-plugin-devtools-test'
+VM_CPUS = ENV['VM_CPUS'] || 1
+VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100
+VM_MEMORY = ENV['VM_MEMORY'] || 6144
 VM_GUI = ENV['VM_GUI'] == 'false' ? false : true
 VM_VB_NATDNSHOSTRESOLVER = ENV['VM_VB_NATDNSHOSTRESOLVER'] || 'off'
 VB_GUEST = ENV['VB_GUEST'] == 'true' ? true : false
@@ -26,6 +26,8 @@ HTTPS_PROXY = ENV['HTTPS_PROXY']
 NO_PROXY = ENV['NO_PROXY']
 OPENSHIFT_PORT_HOST = ENV['OPENSHIFT_PORT_HOST'] || 8443
 TESTING = ENV['VAGRANT_TESTING'] == 'true' ? true : false
+GIT_USERNAME = ENV['GIT_USERNAME'] || ''
+GIT_EMAIL = ENV['GIT_EMAIL'] || ''
 
 boxes = [
   {
@@ -56,7 +58,22 @@ Vagrant.configure("2") do |config|
       config.proxy.no_proxy = NO_PROXY
     end
   end
-  
+
+  #      All this to get the git username and email to set in the poststrap provisioner. FIXNME glob path is hardcoded to centos/virtualbox
+  if (Dir.glob("#{File.dirname(__FILE__)}/.vagrant/machines/centos/virtualbox/*").empty? ||
+  ARGV[1] == '--provision' ||
+  (ARGV[1] == '--provision-with' && ARGV[2] == 'poststrap')) &&
+  (GIT_USERNAME.nil? || GIT_USERNAME.empty? || GIT_USERNAME == 'null' || GIT_EMAIL.nil? || GIT_EMAIL.empty? || GIT_EMAIL == 'null') &&
+  ARGV[0] != 'status' &&
+  ARGV[0] != 'box'
+    print "Enter your git global config credentials: \n"
+    print "user.name: "
+    GIT_USERNAME = STDIN.gets.chomp
+    print "user.GIT_EMAIL: "
+    GIT_EMAIL = STDIN.gets.chomp
+    print "\n"
+  end
+
   boxes.each do |box|
     config.vm.define box[:name], primary: box[:primary] do |vms|
       vms.vm.box = box[:box]

@@ -33,17 +33,4 @@ class IntegrationTest {
 
 	}
 
-	Map getConfig() {
-		Yaml ymlParser = new Yaml()
-
-		Map vars = ymlParser.load(("${testProjectDir}/ansible/vars.yml" as File).text)
-		String renderedVars = new Jinjava().render(("${testProjectDir}/ansible/vars.yml" as File).getText("UTF-8"), vars)
-		vars = ymlParser.load(renderedVars)
-
-		String renderedProjects = new Jinjava().render(("${testProjectDir}/ansible/apps.yml" as File).getText("UTF-8"), vars)
-		Map mappedConfig = ymlParser.load(renderedProjects)
-		mappedConfig += vars
-
-		mappedConfig
-	}
 }

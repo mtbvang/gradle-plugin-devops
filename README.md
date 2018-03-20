@@ -6,7 +6,7 @@ Gradle plugin to help with local development by integrating with OpenShift, Vagr
 
 
 Usage
------------
+-----
 
 The plugin has not been published. It can be published locally with:
 
@@ -44,7 +44,7 @@ All variables in var.yml become extensions and can be configured in build.gradle
 
 ### Configuration
 
-The plugin requires a var.yml file and apps.yml file in the root folder ofhe project. It will place default ones in there if one does not exist.
+The plugin requires a var.yml file in the root folder ofhe project. It will place default ones in there if one does not exist.
 
 
 Development

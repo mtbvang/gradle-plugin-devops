@@ -101,26 +101,8 @@ dockerWeb: httpd
 projectTypeWeb: web
 projectTypeSpringboot: springboot
 projectTypeZuul: zuul
-projectTypeMssql: mssql
 
 defaultProjectEnabledValue: false
-
-mssqlServerPort: 1433
-mssqlServerPortManage: 11333
-mssqlServerPortJmx: 1333
-mssqlServerPortJrebel: 1233
-mssqlServerPortRemotedebugging: 1133
-mssqlServerEnabled: "{{ defaultProjectEnabledValue }}"
-mssqlServerSaPassword: Th1s1sthesapassword!
-mssqlServerArtifactId: blank
-mssqlServerPackaging: blank
-mssqlServerVersion: blank
-mssqlServerGroupId: blank
-mssqlAppName: 'mssql-server'
-# FIXME refactor and remove duplicates
-mssqlPassword: 'Th1s1sthesapassword!'
-mssqlPorts: 1433
-
 
 jrebelConfig: "-agentpath:/tmp/lib/libjrebel64.so -Drebel.log.file=/tmp/jrebel.log -Drebel.log=trace -Drebel.base=/tmp -Drebel.remoting_plugin=true -Drebel.remoting_host=localhost"
 remoteDebug: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address="
