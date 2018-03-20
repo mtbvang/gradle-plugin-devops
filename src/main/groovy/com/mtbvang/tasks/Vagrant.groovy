@@ -101,7 +101,7 @@ class Vagrant {
 				def vagrantCommand = vagrantCommandEnvVars \
 					+ "GIT_USERNAME='${gitUsername}' GIT_PASSWORD=${gitPassword} vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
 
-				println("vagrant command: ${vagrantCommand}")
+				log.debug("vagrant command: ${vagrantCommand}")
 
 				project.exec {
 					ignoreExitValue false
