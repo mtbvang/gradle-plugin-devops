@@ -46,10 +46,12 @@ openshiftDataDir: '/openshift/data'
 vagrantVMName: 'centos'
 vagrantProvider: 'virtualbox'
 vagrantGui: true
-vagrantVMMemory: 8192
+vagrantVMMemory: 6144
+vagrantVMMemoryMax: 7168
 runAnsibleGalaxy: true
 vagrantVBGuest: false
-vagrantVMCPUs: 4
+vagrantVMCPUs: 1
+vagrantVMCPUsMax: 2
 vagrantVMCPUCap: 100
 vagrantPlugins: "vagrant-cachier vagrant-proxyconf vagrant-vbguest vagrant-registration"
 vagrantTesting: false

@@ -4,6 +4,8 @@ plugins {
 
 // Ordering for vagrantRecreate
 vagrantUp.mustRunAfter(vagrantDestroy)
+// Ordering for vagrantUpMaxPower
+vagrantUpMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantRecreateMaxPower
 vagrantRecreate.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantReloadMaxPower

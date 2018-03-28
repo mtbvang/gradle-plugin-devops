@@ -69,7 +69,7 @@ test {
 
 functionalTest {
 	environment 'GIT_USERNAME', 'foo'
-	environment 'GIT_PASSWORD', 'bar'
+	environment 'GIT_EMAIL', 'foo@bar.com'
 }
 
 group = artifact_group

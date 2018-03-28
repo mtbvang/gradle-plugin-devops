@@ -31,28 +31,31 @@ class Vagrant {
 			pon = 'source ~/.bash_profile && pon && '
 		}
 
-		vagrantEnvVars << ["pon": "${project.devtool.pon}"]
-		vagrantEnvVars << ["ANSIBLE_GALAXY": "${project.devtool.runAnsibleGalaxy}"]
-		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
-		vagrantEnvVars << ["VM_MEMORY": "${project.devtool.vagrantVMMemory}"]
-		vagrantEnvVars << ["VM_GUI": "${project.devtool.vagrantGui}"]
-		vagrantEnvVars << ["VM_CPUS": "${project.devtool.vagrantVMCPUs}"]
-		vagrantEnvVars << ["VM_CPU_CAP": "${project.devtool.vagrantVMCPUCap}"]
-		vagrantEnvVars << ["VB_GUEST": "${project.devtool.vagrantVBGuest}"]
-		vagrantEnvVars << ["OPENSHIFT_PORT_HOST": "${project.devtool.vagrantOpenshiftHostForwardPort}"]
-		vagrantEnvVars << ["VM_NAME": "${project.devtool.virtualboxVMName}"]
-		vagrantEnvVars << ["VAGRANT_TESTING": "${project.devtool.vagrantTesting}"]
+		vagrantEnvVars << ["pon": project.devtool.pon]
+		vagrantEnvVars << ["ANSIBLE_GALAXY": project.devtool.runAnsibleGalaxy]
+		vagrantEnvVars << ["VM_NAME": project.devtool.virtualboxVMName]
+		vagrantEnvVars << ["VM_MEMORY": project.devtool.vagrantVMMemory]
+		vagrantEnvVars << ["VM_GUI": project.devtool.vagrantGui]
+		vagrantEnvVars << ["VM_CPUS": project.devtool.vagrantVMCPUs]
+		vagrantEnvVars << ["VM_CPU_CAP": project.devtool.vagrantVMCPUCap]
+		vagrantEnvVars << ["VB_GUEST": project.devtool.vagrantVBGuest]
+		vagrantEnvVars << ["OPENSHIFT_PORT_HOST": project.devtool.vagrantOpenshiftHostForwardPort]
+		vagrantEnvVars << ["VM_NAME": project.devtool.virtualboxVMName]
+		vagrantEnvVars << ["VAGRANT_TESTING": project.devtool.vagrantTesting]
 
 		vagrantEnvVars.each{ k, v ->
 			if(v) {
-				log.info("Adding vagrant environment variable to map: {}: {}", k, v)
+				log.info("Adding vagrant environment variable to command: {}: {}", k, v)
 				vagrantCommandEnvVars += "${k}=${v} "
 			}
 		}
+		
+		log.info("vagrantCommandEnvVars: {}", vagrantCommandEnvVars)
 
 		// Create all tasks before specifying dependencies to avoid null pointers.
 		initVagrantMaxPower(project)
 		vagrantUp(project)
+		vagrantUpMaxPower(project)
 		vagrantHalt(project)
 		vagrantStatus(project)
 		vagrantInstallPlugins(project)
@@ -68,13 +71,20 @@ class Vagrant {
 
 
 	private Task initVagrantMaxPower(Project project) {
-		String description = 'Initialises higher VM power settings. Sets vagrant RAM=10G and CPU=6.'
+		String description = 'Initialises higher VM power settings. Sets vagrant RAM=14G and CPU=4.'
 
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('initVagrantMaxPower')) {
 			doFirst {
-				project.devtool.vagrantVMCPUs = 2
-				project.devtool.vagrantVMMemory = 10240
-				log.info("initVagrantMaxPower vagrantVMCPUs: {}, vagrantVMMemory: {}", project.devtool.vagrantVMCPUs, project.devtool.vagrantVMMemory)
+				vagrantEnvVars["VM_CPUS"] = project.devtool.vagrantVMCPUsMax
+				vagrantEnvVars["VM_MEMORY"] = project.devtool.vagrantVMMemoryMax
+				vagrantCommandEnvVars = ''
+				vagrantEnvVars.each{ k, v ->
+					if(v) {
+						log.info("Recreating vagrant environment variable and adding to command: {}: {}", k, v)
+						vagrantCommandEnvVars += "${k}=${v} "
+					}
+				}
+				log.info("vagrantCommandEnvVars: {}", vagrantCommandEnvVars)
 			}
 		}
 	}
@@ -96,18 +106,29 @@ class Vagrant {
 		"""
 		project.task([group: ['Vagrant'], description: description], DevtoolUtils.getPluginTaskName('vagrantUp')) {
 			doFirst {
-				def gitUsername = System.getenv("GIT_USERNAME") ?: System.console().readLine('What is your git username?:')
-				def gitPassword = System.getenv("GIT_PASSWORD") ?: System.console().readPassword('What is your git password?:')
+				def gitUsername = System.getenv("GIT_USERNAME") ?: System.console().readLine('\nEnter you git username (e.g. Carl Sagan)?:')
+				def gitEmail = System.getenv("GIT_EMAIL") ?: System.console().readLine('\nEnteryour git email?:')
 				def vagrantCommand = vagrantCommandEnvVars \
-					+ "GIT_USERNAME='${gitUsername}' GIT_PASSWORD=${gitPassword} vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
+					+ "GIT_USERNAME='${gitUsername}' GIT_EMAIL=${gitEmail} vagrant up ${project.devtool.vagrantVMName} --provider ${project.devtool.vagrantProvider} ${project.devtool.vagrantProvisionOpts}"
 
 				log.debug("vagrant command: ${vagrantCommand}")
-
 				project.exec {
 					ignoreExitValue false
 					commandLine "bash", "-c", vagrantCommand
 				}
 			}
+		}
+	}
+
+	private Task vagrantUpMaxPower(Project project) {
+		String description = 'Does a vagrant up of the local development VM with higher RAM and CPU settings.'
+
+		project.task([dependsOn: [
+				DevtoolUtils.getPluginTaskName('initVagrantMaxPower'),
+				DevtoolUtils.getPluginTaskName('vagrantUp')
+			],
+			group: ['Vagrant'],
+			description: description], DevtoolUtils.getPluginTaskName('vagrantUpMaxPower')) {
 		}
 	}
 
@@ -187,7 +208,7 @@ class Vagrant {
 				def vagrantCommand = vagrantCommandEnvVars \
 					+ "vagrant reload ${project.devtool.vagrantVMName} ${project.devtool.vagrantProvisionOpts}"
 
-				println("vagrant command: ${vagrantCommand}")
+				log.debug("vagrant command: ${vagrantCommand}")
 
 				project.exec {
 					ignoreExitValue true
@@ -209,7 +230,7 @@ class Vagrant {
 
 	private Task vagrantRecreate(Project project) {
 		String description = 'Destroy and up the local development VM with default vagrant settings for VM such as RAM and CPU. Because of openshiftPortForwardAll task, this task can only be run from the host.'
-		
+
 		project.task([dependsOn: [
 				DevtoolUtils.getPluginTaskName('vagrantDestroy'),
 				DevtoolUtils.getPluginTaskName('vagrantUp')
@@ -221,7 +242,7 @@ class Vagrant {
 
 	private Task vagrantRecreateMaxPower(Project project) {
 		String description = 'Destroy and up the local development VM with default vagrant settings for VM such as RAM and CPU. Because of openshiftPortForwardAll task, this task can only be run from the host.'
-		
+
 		project.task([dependsOn: [
 				DevtoolUtils.getPluginTaskName('initVagrantMaxPower'),
 				DevtoolUtils.getPluginTaskName('vagrantRecreate')
@@ -239,7 +260,7 @@ class Vagrant {
 				def vagrantCommand = vagrantCommandEnvVars \
 				+ "vagrant provision ${project.devtool.vagrantVMName} ${project.devtool.vagrantProvisionOpts}"
 
-				println("vagrant command: ${vagrantCommand}")
+				log.debug("vagrant command: ${vagrantCommand}")
 
 				project.exec {
 					ignoreExitValue true
@@ -260,5 +281,4 @@ class Vagrant {
 			}
 		}
 	}
-	
 }

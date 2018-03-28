@@ -2,8 +2,7 @@
 # vi: set ft=ruby :
 
 #
-# Refer to README for usage. Only one VM can be spun up at once because of port forwarding conflicts.
-# If VM_GUI=true or TESTING=true then port forwarding is not run.
+# This file is placed here as a starter by gradle-devtools-plugin. Uncomment and update as required.
 #
 
 PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirname(__FILE__)))
@@ -14,20 +13,18 @@ PROJECT_NAME = ENV['PROJECT_NAME'] || File.basename(File.expand_path(File.dirnam
 ANSIBLE_GALAXY_FORCE = ENV['ANSIBLE_GALAXY_FORCE'] || "--force"
 ANSIBLE_GALAXY = ENV['ANSIBLE_GALAXY'] == 'false' ? false : true
 ANSIBLE_VERSION = ENV['ANSIBLE_VERSION'] || '2.4.2.0'
-VM_NAME = ENV['VM_NAME'] || 'gradle-plugin-devtools-test'
+VM_NAME = ENV['VM_NAME'] || 'centos'
 VM_CPUS = ENV['VM_CPUS'] || 1
 VM_CPU_CAP = ENV['VM_CPU_CAP'] || 100
 VM_MEMORY = ENV['VM_MEMORY'] || 6144
 VM_GUI = ENV['VM_GUI'] == 'false' ? false : true
-VM_VB_NATDNSHOSTRESOLVER = ENV['VM_VB_NATDNSHOSTRESOLVER'] || 'off'
 VB_GUEST = ENV['VB_GUEST'] == 'true' ? true : false
 HTTP_PROXY = ENV['HTTP_PROXY']
 HTTPS_PROXY = ENV['HTTPS_PROXY']
 NO_PROXY = ENV['NO_PROXY']
 OPENSHIFT_PORT_HOST = ENV['OPENSHIFT_PORT_HOST'] || 8443
-TESTING = ENV['VAGRANT_TESTING'] == 'true' ? true : false
-GIT_USERNAME = ENV['GIT_USERNAME'] || ''
-GIT_EMAIL = ENV['GIT_EMAIL'] || ''
+gitUsername = ENV['GIT_USERNAME'] || ''
+gitEmail = ENV['GIT_EMAIL'] || ''
 
 boxes = [
   {
@@ -59,65 +56,43 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  #      All this to get the git username and email to set in the poststrap provisioner. FIXNME glob path is hardcoded to centos/virtualbox
-  if (Dir.glob("#{File.dirname(__FILE__)}/.vagrant/machines/centos/virtualbox/*").empty? ||
-  ARGV[1] == '--provision' ||
-  (ARGV[1] == '--provision-with' && ARGV[2] == 'poststrap')) &&
-  (GIT_USERNAME.nil? || GIT_USERNAME.empty? || GIT_USERNAME == 'null' || GIT_EMAIL.nil? || GIT_EMAIL.empty? || GIT_EMAIL == 'null') &&
-  ARGV[0] != 'status' &&
-  ARGV[0] != 'box'
-    print "Enter your git global config credentials: \n"
-    print "user.name: "
-    GIT_USERNAME = STDIN.gets.chomp
-    print "user.GIT_EMAIL: "
-    GIT_EMAIL = STDIN.gets.chomp
-    print "\n"
-  end
-
   boxes.each do |box|
     config.vm.define box[:name], primary: box[:primary] do |vms|
       vms.vm.box = box[:box]
-      
-      if TESTING
-        ANSIBLE_DRY_RUN = '--check'
-       else
-         ANSIBLE_DRY_RUN = ''
-        vms.vm.network "forwarded_port", guest: 8443, host: OPENSHIFT_PORT_HOST  # Openshift console
-       end
-            
+
+      # vms.vm.network "private_network", ip: "192.168.150.2"
+
       @syncfolder_type = 'virtualbox'
       if Vagrant::Util::Platform.windows? then
-          syncfolder_type = 'nfs'
+        syncfolder_type = 'nfs'
       end
       vms.vm.synced_folder '../', '/vagrant', type: syncfolder_type , disabled: false
+      vms.vm.synced_folder "~/.m2", '/home/vagrant/.m2', type: syncfolder_type , disabled: false
 
-      vms.vm.provider "virtualbox" do |v|
+      # All this to get the git username and email to set in the poststrap provisioner. FIXNME glob path is hardcoded to centos/virtualbox
+      #promptForGitDetails(gitUsername, gitEmail)
+
+      vms.vm.provider :virtualbox do |vb|
         unless VM_NAME.to_s.strip.empty?
           #Required for testkit testing to cleanup VMs
-          v.name = VM_NAME
+          vb.name = VM_NAME
         end
-        v.gui = VM_GUI
-        v.cpus = VM_CPUS
-        v.customize ["modifyvm", :id, "--cpuexecutioncap", box[:cpu]]
-        v.customize ["modifyvm", :id, "--memory", box[:ram]]
-        v.customize ["modifyvm", :id, "--ioapic", "on"]
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", VM_VB_NATDNSHOSTRESOLVER]
+        vb.gui = VM_GUI
+        vb.cpus = VM_CPUS
+        vb.customize ["modifyvm", :id, "--cpuexecutioncap", box[:cpu]]
+        vb.customize ["modifyvm", :id, "--memory", box[:ram]]
       end
-
-      vms.vm.provider "vmware_workstation" do |v|
-        v.gui = VM_GUI
-        v.vmx["memsize"] = box[:ram]
-        v.vmx["numvcpus"] = VM_CPUS
+      
+      vms.vm.provider :vmware_workstation do |vm|
+        vm.gui = VM_GUI
+        vm.vmx["memsize"] = box[:ram]
+        vm.vmx["numvcpus"] = VM_CPUS
       end
 
       vms.vm.provision "bootstrap", type: :shell, path: "provision/bootstrap.sh"
-      if box[:name].eql? "ubuntu"
-        vms.vm.provision "bootstrapUbuntu", type: :shell, path: "provision/bootstrap_ubuntu.sh"
-      elsif box[:name].eql? "centos"
-        vms.vm.provision "bootstrapCentos", type: :shell, path: "provision/bootstrap_centos.sh"
-      end
+      vms.vm.provision "bootstrapCentos", type: :shell, path: "provision/bootstrap_centos.sh"
 
-      # Note: bootstrap_centos.sh install ansible
+      # Note: bootstrap_centos.sh installs ansible
       vms.vm.provision "ansible", type: :ansible_local do |ansible|
         ansible.verbose = "v"
         ansible.install_mode = "pip"
@@ -128,7 +103,31 @@ Vagrant.configure("2") do |config|
         ansible.galaxy_command = "ansible-galaxy install --ignore-certs --role-file=%{role_file} --roles-path=%{roles_path} #{ANSIBLE_GALAXY_FORCE}"
         ansible.become = true
       end
+
+      #vms.vm.provision "poststrap" , type: :shell, path: "provision/poststrap.sh", args: [gitUsername, gitEmail]
     end
   end
 
+end
+
+def promptForGitDetails(gitUsername, gitEmail)
+  provider = (ARGV.include? 'vmware_workstation') ? :vmware_workstation : :virtualbox
+  puts "provider: #{provider}"
+  puts "Checking #{File.dirname(__FILE__)}/.vagrant/machines/centos/#{provider}/"
+  puts (Dir.entries("#{File.dirname(__FILE__)}/.vagrant/machines/centos/#{provider}/") - %w{ . .. }).empty?
+
+  if ((Dir.entries("#{File.dirname(__FILE__)}/.vagrant/machines/centos/#{provider}/") - %w{ . .. }).empty? ||
+  ARGV[1] == '--provision' ||
+  (ARGV[1] == '--provision-with' && ARGV[2] == 'poststrap')) &&
+  (gitUsername.nil? || gitUsername.empty? || gitUsername == 'null' || gitEmail.nil? || gitEmail.empty? || gitEmail == 'null') &&
+  (ARGV[0] == 'provision' || ARGV[0] == 'up')
+    print "Enter your git global config credentials: \n"
+    print "user.name: "
+    gitUsername = STDIN.gets
+    gitUsername = !gitUsername.nil? ? gitUsername.chomp : ''
+    print "user.email: "
+    gitEmail = STDIN.gets
+    gitEmail = !gitEmail.nil? ? gitEmail.chomp : ''
+    print "\n"
+  end
 end

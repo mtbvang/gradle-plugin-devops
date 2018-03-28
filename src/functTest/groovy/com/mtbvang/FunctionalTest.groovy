@@ -15,11 +15,13 @@ import org.yaml.snakeyaml.Yaml
 import com.hubspot.jinjava.Jinjava
 
 /*
- * Tests tasks using the 
+ * setup method runs before every test while the cleanUp task only runs at he test run to 
+ * allow reuse of the VM. The tests themselves should determine the VMs state by calling
+ * ensureVMRunning() and ensureVMProvisioned() as needed.
  */
 class FunctionalTest {
 	private static Logger log = LoggerFactory.getLogger(FunctionalTest.class)
-	// FIXME revert back to using TemporaryFolder to get auto clean up
+	// FIXME Maybe revert back to using TemporaryFolder to get auto clean up instead of manual cleanUp()
 	//@ClassRule public static final TemporaryFolder testProjectDir = new TemporaryFolder();
 	public static Path testProjectDir
 	//public static final Path testProjectDir = new File('/tmp/devtool2450998320394310883').toPath()
@@ -38,10 +40,10 @@ class FunctionalTest {
 	void setup() {
 
 		println("Test setup called.")
-		
-		vagrantVMCPUs = 2
-		vagrantVMMemory = 6144
-		
+
+		vagrantVMCPUs = 1
+		vagrantVMMemory = 1024
+
 		println("isVMProvisioned: " + isVMProvisioned)
 
 		if(!testProjectDir) {
@@ -50,30 +52,26 @@ class FunctionalTest {
 			copyTestFiles()
 			vagrantOpenshiftHostForwardPort = TestUtils.getRandomPort(9999, 8999)
 		}
-
-		// The test runner currently throws an error because of mustRunAfter constraints. Can run tests on running VM if we want the contraints.
-		ensureVMRunning()
 	}
 
+	/*
+	 * Startup up an unprovisioned VM
+	 */
 	void ensureVMRunning() {
 		println("Ensuring VM is running as test fixture for all tests...")
-		def sout = new StringBuilder(), serr = new StringBuilder()
-		"chmod a+x testSetup.sh".execute(null, testProjectDir.toFile())
-		Process proc = "./testSetup.sh ${testProjectDir.toFile().getName()} ${vagrantVMMemory} false ${vagrantVMCPUs} 100 ${vagrantOpenshiftHostForwardPort}".execute(null, testProjectDir.toFile())
-		proc.consumeProcessOutput(sout, serr)
-		proc.waitFor()
-		println "out> $sout err> $serr"
+		runVagrantTask('vagrantUp', '--no-provision')
 	}
 
-	void ensureVMIsProvisioned() {
+	/*
+	 * Provision the VM for test that require a provisioned VM e.g. the openshift tests.
+	 */
+	void ensureVMProvisioned() {
+
 		if(!isVMProvisioned) {
+			vagrantVMMemory = 6144
+			runVagrantTask('vagrantRecreate', '')
 			println("Provisioning VM. This might take over 10 minutes...")
-			def sout = new StringBuilder(), serr = new StringBuilder()
-			"chmod a+x provisionTestVM.sh".execute(null, testProjectDir.toFile())
-			Process proc = "./provisionTestVM.sh".execute(null, testProjectDir.toFile())
-			proc.consumeProcessOutput(sout, serr)
-			proc.waitFor()
-			println "out> $sout err> $serr"
+			runVagrantTask('vagrantProvision', '')
 			isVMProvisioned = true
 		}
 	}
@@ -83,10 +81,10 @@ class FunctionalTest {
 
 		isVMProvisioned = false
 		result = null
-
+		
 		println("Cleaning up after tests. Deleting " + testProjectDir.toFile())
 		TestUtils.vagrantCleanUp(testProjectDir.toFile())
-
+		testProjectDir = null
 	}
 
 	BuildResult runVagrantTask(String taskName) {
@@ -98,6 +96,12 @@ class FunctionalTest {
 	BuildResult runVagrantTask(String taskName, String vagrantProvisionOpts) {
 
 		runVagrantTask(taskName, false, vagrantProvisionOpts)
+
+	}
+
+	BuildResult runVagrantMaxPowerTask(String taskName, String vagrantProvisionOpts) {
+
+		runVagrantMaxPowerTask(taskName, false, vagrantProvisionOpts)
 
 	}
 
@@ -117,6 +121,19 @@ class FunctionalTest {
 				"-PvagrantVMMemory=${vagrantVMMemory}")
 				.withPluginClasspath()
 				.forwardOutput()
+				.build()
+	}
+
+	BuildResult runVagrantMaxPowerTask(String taskName, boolean vagrantGui, String vagrantProvisionOpts) {
+		BuildResult result = GradleRunner.create()
+				.withProjectDir(testProjectDir.toFile())
+				.withArguments(taskName,
+				"-PvagrantGui=${vagrantGui}",
+				"-PvagrantProvisionOpts=${vagrantProvisionOpts}",
+				"-PvagrantOpenshiftHostForwardPort=${vagrantOpenshiftHostForwardPort}",
+				"-PvirtualboxVMName=${testProjectDir.toFile().getName()}")
+				.withPluginClasspath()
+				.forwardOutput().withDebug(true)
 				.build()
 	}
 

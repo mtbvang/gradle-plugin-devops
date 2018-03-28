@@ -8,7 +8,7 @@ import org.junit.Test
 import org.slf4j.*
 
 /*
- * The setup method that runs before all tasks ensures there's a non provisioned VM to run these tests against.
+ * These tests will call the openshift tasks and actually perform the openshift actions. 
  * 
  * @author Vang Nguyen
  *
@@ -19,8 +19,7 @@ class OpenshiftTest extends FunctionalTest {
 
 	@Test
 	void openshiftUp() {
-
-		ensureVMIsProvisioned()
+		ensureVMProvisioned()
 		result = runTask('openshiftHalt')
 		result.task(':openshiftHalt').outcome == SUCCESS
 		result = runTask('openshiftUp')
@@ -32,8 +31,7 @@ class OpenshiftTest extends FunctionalTest {
 
 	@Test
 	void openshiftStatus() {
-
-		ensureVMIsProvisioned()
+		ensureVMProvisioned()
 		runTask('openshiftHalt')
 		result = runTask('openshiftStatus')
 		result.task(':openshiftStatus').outcome == SUCCESS
@@ -43,7 +41,7 @@ class OpenshiftTest extends FunctionalTest {
 	@Test
 	void openshiftHalt() {
 
-		ensureVMIsProvisioned()
+		ensureVMProvisioned()
 		result = runTask('openshiftHalt')
 		result.task(':openshiftHalt').outcome == SUCCESS
 	}
@@ -52,7 +50,7 @@ class OpenshiftTest extends FunctionalTest {
 	@Test
 	void openshiftRestart() {
 
-		ensureVMIsProvisioned()
+		ensureVMProvisioned()
 		result = runTask('openshiftRestart')
 		assertThat(result.output).contains('Starting OpenShift using openshift/origin:v3.7.0 ...')
 		assertThat(result.output).contains('OpenShift server started')

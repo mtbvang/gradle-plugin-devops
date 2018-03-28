@@ -25,7 +25,7 @@ buildscript {
     }
   }
   dependencies {
-    classpath "com.mtbvang:gradle-plugin-devtool:0.1.0"
+    classpath "com.mtbvang:gradle-plugin-devtool:0.4.0"
   }
 }
 
@@ -34,6 +34,17 @@ apply plugin: "devtool"
 devtool {
 
 }
+
+// Ordering for vagrantRecreate
+vagrantUp.mustRunAfter(vagrantDestroy)
+// Ordering for vagrantUpMaxPower
+vagrantUpMaxPower.mustRunAfter(initVagrantMaxPower)
+// Ordering for vagrantRecreateMaxPower
+vagrantRecreate.mustRunAfter(initVagrantMaxPower)
+// Ordering for vagrantReloadMaxPower
+vagrantReload.mustRunAfter(initVagrantMaxPower)
+// Ordering for openshiftRestart
+openshiftUp.mustRunAfter(openshiftHalt)
 
 ```
 
