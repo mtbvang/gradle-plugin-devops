@@ -50,7 +50,7 @@ openshiftUp.mustRunAfter(openshiftHalt)
 
 The mavenLocal() allows for local publishing of the plugin for development and testing.
 
-All variables in var.yml become extensions and can be configured in build.gradle.
+All variables in var.yml become extensions and can be configured in build.gradle. A vars.yml file will be placed in the same folder as the build.gradle file on first run if one does not exist. 
 
 
 ### Configuration
