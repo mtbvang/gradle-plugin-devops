@@ -50,7 +50,7 @@ class Openshift {
 					log.info("Output of oc cluster status: \n" + outputAsString)
 					def match = outputAsString.find(/The OpenShift cluster was started/)
 					if (match == null ) {
-						def upCommand = "oc cluster up --use-existing-config --public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir} "
+						def upCommand = "oc cluster up --use-existing-config --public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir} --host-config-dir ${project.devtool.openshiftConfigDir} "
 						if(project.devtool.httpsProxy != 'null' && project.devtool.httpsProxy.trim()) {
 							upCommand += "--http-proxy ${project.devtool.httpProxy} --https-proxy ${project.devtool.httpsProxy} --no-proxy ${project.devtool.noProxy} "
 						}

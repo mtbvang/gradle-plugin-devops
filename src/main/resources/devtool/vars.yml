@@ -38,6 +38,7 @@ openshiftAdminPassword: admin
 openshiftDomain: openshift.local
 openshiftEnvironment: dev1
 openshiftDataDir: '/openshift/data'
+openshiftConfigDir: '/tmp'
 
 
 ##

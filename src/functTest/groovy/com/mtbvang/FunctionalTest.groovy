@@ -168,8 +168,6 @@ class FunctionalTest {
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/build.gradle"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/tests"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/testSetup.sh"), testProjectDir.toFile())
-		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provisionTestVM.sh"), testProjectDir.toFile())
 		DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), testProjectDir.toFile())
 	}
 }
