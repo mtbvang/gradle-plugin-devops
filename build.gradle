@@ -70,6 +70,8 @@ test {
 functionalTest {
 	environment 'GIT_USERNAME', 'foo'
 	environment 'GIT_EMAIL', 'foo@bar.com'
+	environment 'GITHUB_CLIENT_ID', "$System.env.GITHUB_CLIENT_ID_TEST"
+	environment 'GITHUB_SECRET', "$System.env.GITHUB_SECRET_TEST"
 }
 
 group = artifact_group

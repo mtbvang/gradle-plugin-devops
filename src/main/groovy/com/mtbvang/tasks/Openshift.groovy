@@ -10,12 +10,16 @@ import org.gradle.api.Task
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+// FIXME Covert task definitions to annotations 
 class Openshift {
 
 	Logger log = LoggerFactory.getLogger(Openshift.class)
 
 	Openshift(Project project) {
 		super();
+		openshiftLoginAdmin(project)
+		openshiftLoginDeveloper(project)
+		openshiftLoginSystem(project)
 		openshiftStatus(project)
 		openshiftUp(project)
 		openshiftRestart(project)
@@ -24,8 +28,52 @@ class Openshift {
 
 	}
 
+	private Task openshiftLoginSystem(Project project) {
+		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName('openshiftLoginSystem')) {
+			doFirst {
+				project.exec {
+					ignoreExitValue true
+					commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc login --insecure-skip-tls-verify=true -u ${project.devtool.openshiftSystemUser} ${project.devtool.openshiftAuthority}'"
+				}
+			}
+		}
+	}
+	
+	private Task openshiftLoginAdmin(Project project) {
+		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName('openshiftLoginAdmin')) {
+			doFirst {
+				project.exec {
+					ignoreExitValue true
+					commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc login --insecure-skip-tls-verify=true -u ${project.devtool.openshiftAdminUser} -p ${project.devtool.openshiftAdminPassword} ${project.devtool.openshiftAuthority}'"
+				}
+			}
+		}
+	}
+	
+	private Task openshiftLoginDeveloper(Project project) {
+		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName('openshiftLoginDeveloper')) {
+			doFirst {
+				project.exec {
+					ignoreExitValue true
+					commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc login --insecure-skip-tls-verify=true -u ${project.devtool.openshiftDevUser} -p ${project.devtool.openshiftDevPassword} ${project.devtool.openshiftAuthority}'"
+				}
+			}
+		}
+	}
+	
 	private Task openshiftStatus(Project project) {
 		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName('openshiftStatus')) {
+			doFirst {
+				project.exec {
+					ignoreExitValue true
+					commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc cluster status'"
+				}
+			}
+		}
+	}
+	
+	private Task openshiftConfig(Project project) {
+		project.task([group: ['Openshift']], DevtoolUtils.getPluginTaskName('openshiftConfig')) {
 			doFirst {
 				project.exec {
 					ignoreExitValue true
@@ -50,7 +98,8 @@ class Openshift {
 					log.info("Output of oc cluster status: \n" + outputAsString)
 					def match = outputAsString.find(/The OpenShift cluster was started/)
 					if (match == null ) {
-						def upCommand = "oc cluster up --use-existing-config --public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir} --host-config-dir ${project.devtool.openshiftConfigDir} "
+						def metrics = (project.devtool.openshiftMetrics) ? '--metrics' : ''
+						def upCommand = "oc cluster up --use-existing-config --public-hostname ${project.devtool.openshiftHostname} --host-data-dir ${project.devtool.openshiftDataDir} --host-config-dir ${project.devtool.openshiftConfigDir} ${metrics} "
 						if(project.devtool.httpsProxy != 'null' && project.devtool.httpsProxy.trim()) {
 							upCommand += "--http-proxy ${project.devtool.httpProxy} --https-proxy ${project.devtool.httpsProxy} --no-proxy ${project.devtool.noProxy} "
 						}
@@ -60,7 +109,7 @@ class Openshift {
 						// Give admin user cluster-admin role
 						// FIXME this should be done as part of the provisioning
 						project.exec {
-							commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc login -u system:admin " \
+							commandLine "bash", "-c", "vagrant ssh ${project.devtool.vagrantVMName} -c 'oc login --insecure-skip-tls-verify=true -u ${project.devtool.openshiftSystemUser} ${project.devtool.openshiftAuthority} " \
 								+ "&& oc adm policy add-cluster-role-to-user cluster-admin ${ project.devtool.openshiftDevUser }'"
 						}
 

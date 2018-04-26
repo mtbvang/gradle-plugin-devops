@@ -40,9 +40,9 @@ vagrantUp.mustRunAfter(vagrantDestroy)
 // Ordering for vagrantUpMaxPower
 vagrantUpMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantRecreateMaxPower
-vagrantRecreate.mustRunAfter(initVagrantMaxPower)
+vagrantRecreateMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantReloadMaxPower
-vagrantReload.mustRunAfter(initVagrantMaxPower)
+vagrantReloadMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for openshiftRestart
 openshiftUp.mustRunAfter(openshiftHalt)
 
@@ -64,6 +64,8 @@ Development
 Tests can be run with the following commands
 
 ´´´
+export GITHUB_CLIENT_ID=xxxxxxxxxxxx
+export GITHUB_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
 ./gradlew functionalTest -PfunctionalTestEnabled=true
 
 ´´´
@@ -71,6 +73,8 @@ Tests can be run with the following commands
 Functional test with filtering of only specific tests with info:
 
 ´´´
+export GITHUB_CLIENT_ID=xxxxxxxxxxxx
+export GITHUB_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
 ./gradlew functionalTest -PfunctionalTestEnabled=true --tests *VagrantTest.vagrantUp -i
 ´´´
 

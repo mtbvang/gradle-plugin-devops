@@ -22,7 +22,7 @@ defaultProjectEnabledValue: false
 ##
 # Openshift vars
 ##
-openshiftHostname: 127.0.0.1
+openshiftHostname: 192.168.152.2
 openshiftPort: 8443
 openshiftAuthority: "{{openshiftHostname}}:{{openshiftPort}}"
 openshiftPortHost: 8443
@@ -35,10 +35,12 @@ openshiftDevUser: developer
 openshiftDevPassword: developer
 openshiftAdminUser: admin
 openshiftAdminPassword: admin
+openshiftSystemUser: 'system:admin'
 openshiftDomain: openshift.local
 openshiftEnvironment: dev1
 openshiftDataDir: '/openshift/data'
-openshiftConfigDir: '/tmp'
+openshiftConfigDir: '/openshift/origin/openshift.local.config'
+openshiftMetrics: false
 
 
 ##
@@ -48,7 +50,7 @@ vagrantVMName: 'centos'
 vagrantProvider: 'virtualbox'
 vagrantGui: true
 vagrantVMMemory: 6144
-vagrantVMMemoryMax: 7168
+vagrantVMMemoryMax: 8192
 runAnsibleGalaxy: true
 vagrantVBGuest: false
 vagrantVMCPUs: 1

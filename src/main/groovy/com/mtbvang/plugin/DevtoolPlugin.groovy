@@ -62,6 +62,9 @@ class DevtoolPlugin implements Plugin<Project> {
 
 		if(!(new File(project.projectDir, 'provision').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/provision"), project.projectDir)
+			def builder = new AntBuilder()
+			println "file path: " + project.projectDir.absolutePath + "/provision/gofabric8/download.txt"
+			builder.chmod(file: project.projectDir.absolutePath + "/provision/gofabric8/download.txt", perm:'775')
 		}
 		if(!(new File(project.projectDir, 'Vagrantfile').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/Vagrantfile"), project.projectDir)
@@ -69,6 +72,14 @@ class DevtoolPlugin implements Plugin<Project> {
 
 		if(!(new File(project.projectDir, 'vars.yml').exists())) {
 			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/vars.yml"), project.projectDir)
+		}
+		
+		if(!(new File(project.projectDir, 'openshift').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/openshift"), project.projectDir)
+		}
+		
+		if(!(new File(project.projectDir, 'utils').exists())) {
+			DevtoolFileUtils.copyResourcesRecursively(super.getClass().getResource("/devtool/utils"), project.projectDir)
 		}
 
 	}

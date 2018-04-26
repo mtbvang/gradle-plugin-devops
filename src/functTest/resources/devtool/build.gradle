@@ -1,14 +1,144 @@
-plugins {
-	id 'com.mtbvang.devtool' 
+buildscript {
+	repositories {
+		mavenLocal()
+		maven { 
+			url 'https://plugins.gradle.org/m2/'
+		}
+	}
+	dependencies {
+		classpath 'net.rdrei.android.buildtimetracker:gradle-plugin:0.11.+'
+	}
 }
+
+plugins {
+  id "com.mtbvang.devtool" version "0.4.1"
+  id "com.dorongold.task-tree" version "1.3"
+}
+
+apply plugin: 'build-time-tracker'
 
 // Ordering for vagrantRecreate
 vagrantUp.mustRunAfter(vagrantDestroy)
 // Ordering for vagrantUpMaxPower
 vagrantUpMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantRecreateMaxPower
-vagrantRecreate.mustRunAfter(initVagrantMaxPower)
+vagrantRecreateMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for vagrantReloadMaxPower
-vagrantReload.mustRunAfter(initVagrantMaxPower)
+vagrantReloadMaxPower.mustRunAfter(initVagrantMaxPower)
 // Ordering for openshiftRestart
 openshiftUp.mustRunAfter(openshiftHalt)
+
+buildtimetracker {
+	reporters {
+		summary {
+			ordered false
+			threshold 1
+			barstyle 'unicode'
+		}
+	}
+}
+
+
+def vagrantVMName = project.hasProperty('vagrantVMName') ? project.property('vagrantVMName') : 'centos'
+
+task cicdNexus {
+	description """Setups up CI/CD infrastructure on openshift. Installs Nexus.
+	Nexus default username:password = admin:admin123
+	"""
+	group 'CI/CD'
+	doFirst {
+		//install gitlab in the fabric8 project
+		def guestCommand = """
+				oc new-project nexus
+				oc project nexus
+				mvn -f /vagrant/fabric8/fabric8-devops/nexus fabric8:deploy
+			"""
+		//install fabric8 4.x
+		exec {
+			commandLine "bash", "-c", "vagrant ssh ${vagrantVMName} -c '${guestCommand}'"
+		}
+	}
+}
+
+task cicdArtifactory {
+	description """Setups up CI/CD infrastructure on openshift. Installs Artifactory.
+	Artifactory default username:password = admin:password
+	"""
+	group 'CI/CD'
+	doFirst {
+		//install gitlab in the fabric8 project
+		def guestCommand = """
+				oc new-project artifactory
+				oc project artifactory
+				mvn -f /vagrant/fabric8/fabric8-devops/artifactory fabric8:deploy
+			"""
+		//install fabric8 4.x
+		exec {
+			commandLine "bash", "-c", "vagrant ssh ${vagrantVMName} -c '${guestCommand}'"
+		}
+	}
+}
+
+task cicdGitlab {
+	description """Setups up CI/CD infrastructure on openshift. Installs gitlab.
+	gitlab default username = root. token = k_EneNqqjcdEmQs1ehL5. You will be prompted to set the password the first time around.
+	"""
+	group 'CI/CD'
+	doFirst {
+		//install gitlab in the fabric8 project
+		def guestCommand = """
+				oc new-project gitlab
+				oc project gitlab
+				mvn -f /vagrant/fabric8/fabric8-devops/gitlab fabric8:deploy
+			"""
+		//install fabric8 4.x
+		exec {
+			commandLine "bash", "-c", "vagrant ssh ${vagrantVMName} -c '${guestCommand}'"
+		}
+	}
+}
+
+task cicdFabric8 {
+	description '''Setups up CI/CD infrastructure on openshift. Installs fabric8.
+	fabric8 will requires you to create a github oauth app to get the client id and secret https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/.
+	Once the a tenant jenkins has been created you will need to set the git ssl verify to false to get it to work with gitlab. Run the following from the guest:
+	docker exec $(docker ps | grep fabric8/jenkins-openshift | awk '{print $1;}') git config --global http.sslVerify false
+	'''
+	group 'CI/CD'
+	doFirst {
+
+		def githubClientId = System.env.GITHUB_CLIENT_ID ?: System.console.readLine('> Enter github client id: ')
+		def githubSecret = System.env.GITHUB_SECRET ?: System.console.readLine('> Enter github secret: ')
+		def guestCommand = """
+        oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:fabric8:init-tenant
+        oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:fabric8:exposecontroller
+  			gofabric8 deploy --package system -n fabric8 --legacy false --github-client-id ${githubClientId} --github-client-secret ${githubSecret}
+  			sudo chmod 0777 -R /var/lib/origin/openshift.local.pv/
+  			gofabric8 volumes
+  			oc create --as system:admin -f oauthclient.yaml
+		"""
+		//install fabric8 4.x
+		exec {
+			commandLine "bash", "-c", "vagrant ssh ${vagrantVMName} -c '${guestCommand}'"
+		}
+	}
+	
+}
+
+task cicd(dependsOn: [
+	'cicdFabric8',
+	'cicdGitlab',
+	'cicdArtifactory',
+	'cicdNexus'
+]) {
+	description """Setups up CI/CD infrastructure on openshift. Installs fabric8, gitlab, artifactory, nexus.
+	fabric8 will requires you to create a github oauth app to get the client id and secret https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/.
+	Gitlab default username = root. token = k_EneNqqjcdEmQs1ehL5. You will be prompted to set the password the first time around.
+	Artifactory default username:password = admin:password
+	Nexus default username:password = admin:admin123
+	"""
+	group 'CI/CD'
+	cicdGitlab.mustRunAfter(cicdFabric8)
+	cicdArtifactory.mustRunAfter(cicdGitlab)
+	cicdNexus.mustRunAfter(cicdArtifactory)
+}

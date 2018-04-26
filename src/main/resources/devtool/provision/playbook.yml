@@ -5,14 +5,16 @@
   become_method: sudo
   hosts: 
     - all
+  vars:
+    openshift_public_hostname: 192.168.152.2
   pre_tasks:
     - name: Gathering facts
       setup:
   roles:
     - role: openshift
+      openshift_oc_public_hostname: "{{ openshift_public_hostname }}"
       tags: openshift
     - role: devtools
-      name: devtools
       devtools_update_packages: yes
       devtools_user: vagrant
       devtools_password: vagrant
@@ -20,11 +22,51 @@
       devtools_ansible_enabled: false
       devtools_vagrant_enabled: false
       devtools_dep_virtualbox_enabled: false
+      devtools_gradle_version: 4.4
       tags: devtools
     - role: openshift_client
-      name: openshift_client
   tasks:
-    - include: ../tests/inc_tests.yml 
+    - name: Create sysctl file for vm.max_map_count
+      copy:
+        content: 'vm.max_map_count=262144'
+        dest: /etc/sysctl.d/max-map-count.conf
+        owner: root
+        group: root
+        mode: 0777
+      become: true
+      tags: sysctl
+    - name: Restart sysctl
+      command: sysctl -p
+      become: true
+      tags: sysctl
+    - name: Add master server certicate to java truststore
+      shell: "keytool -import -alias {{ openshift_public_hostname }} -file ../openshift/origin/openshift.local.config/master/master.server.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit -noprompt"
+      tags: cacerts
+    - name: Copy existing openshift configs
+      copy:
+        src: ../openshift/origin/openshift.local.config
+        dest: /openshift/origin
+        owner: root
+        group: root
+        mode: 0644
+        remote_src: no
+        backup: no
+      become: true
+      tags: occonfigs
+    - name: Install gofabric8
+      shell: echo gofabric8/download.txt | /usr/bin/bash
+      args:
+        creates: ~/.fabric8/bin/gofabric8
+      become: true
+      become_user: "{{ devtools_user }}"
+      tags: gofabric8
+    - name: Gofabric8 bash entry 
+      lineinfile:
+        path: /home/{{ devtools_user }}/.bashrc
+        insertafter: '^JAVA_HOME='
+        line: 'PATH=$PATH:~/.fabric8/bin'
+      tags: gofabric8,bashrc
+      
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"
     HTTP_PROXY: "{{ lookup('env','HTTP_PROXY') }}"

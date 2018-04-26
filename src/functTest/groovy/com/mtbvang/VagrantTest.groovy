@@ -142,6 +142,6 @@ class VagrantTest extends FunctionalTest {
 		//Check that vm has correct max cpu and ram settings
 		def vmInfo= "vboxmanage showvminfo ${testProjectDir.toFile().getName()}".execute().getText()
 		assertThat(vmInfo).contains("Number of CPUs:  2")
-		assertThat(vmInfo).contains("Memory size:     7168MB")
+		assertThat(vmInfo).contains("Memory size:     8192MB")
 	}
 }
